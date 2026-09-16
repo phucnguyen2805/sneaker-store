@@ -1,0 +1,434 @@
+databaseChangeLog:
+  # =========================================================
+  # 1. USERS
+  # =========================================================
+  - changeSet:
+      id: 002-create-users
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_users
+
+              - column:
+                  name: full_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: email
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: password
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: role
+                  type: VARCHAR(20)
+                  defaultValue: USER
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: email
+            constraintName: uk_user_email
+
+        - createIndex:
+            tableName: users
+            indexName: idx_user_email
+            columns:
+              - column:
+                  name: email
+
+  # =========================================================
+  # 2. BRANDS
+  # =========================================================
+  - changeSet:
+      id: 002-create-brands
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: brands
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_brands
+
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: brands
+            columnNames: name
+            constraintName: uk_brand_name
+
+  # =========================================================
+  # 3. CATEGORIES
+  # =========================================================
+  - changeSet:
+      id: 002-create-categories
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: categories
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_categories
+
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: categories
+            columnNames: name
+            constraintName: uk_category_name
+
+  # =========================================================
+  # 4. SIZES
+  # =========================================================
+  - changeSet:
+      id: 002-create-sizes
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: sizes
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_sizes
+
+              - column:
+                  name: name
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: sizes
+            columnNames: name
+            constraintName: uk_size_name
+
+  # =========================================================
+  # 5. COLORS
+  # =========================================================
+  - changeSet:
+      id: 002-create-colors
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: colors
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_colors
+
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: hex_code
+                  type: VARCHAR(7)
+
+        - addUniqueConstraint:
+            tableName: colors
+            columnNames: name
+            constraintName: uk_color_name
+
+  # =========================================================
+  # 6. PRODUCTS
+  # =========================================================
+  - changeSet:
+      id: 002-create-products
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_products
+
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: description
+                  type: TEXT
+
+              - column:
+                  name: base_price
+                  type: DECIMAL(15,2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: brand_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: category_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+        - createIndex:
+            tableName: products
+            indexName: idx_product_name
+            columns:
+              - column:
+                  name: name
+
+        - addForeignKeyConstraint:
+            baseTableName: products
+            baseColumnNames: brand_id
+            referencedTableName: brands
+            referencedColumnNames: id
+            constraintName: fk_product_brand
+
+        - addForeignKeyConstraint:
+            baseTableName: products
+            baseColumnNames: category_id
+            referencedTableName: categories
+            referencedColumnNames: id
+            constraintName: fk_product_category
+
+  # =========================================================
+  # 7. PRODUCT VARIANTS
+  # =========================================================
+  - changeSet:
+      id: 002-create-product-variants
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: product_variants
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_product_variants
+
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: size_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: color_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: price
+                  type: DECIMAL(15,2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: stock
+                  type: INT
+                  constraints:
+                    nullable: false
+
+        - createIndex:
+            tableName: product_variants
+            indexName: idx_variant_product
+            columns:
+              - column:
+                  name: product_id
+
+        - createIndex:
+            tableName: product_variants
+            indexName: idx_variant_size
+            columns:
+              - column:
+                  name: size_id
+
+        - createIndex:
+            tableName: product_variants
+            indexName: idx_variant_color
+            columns:
+              - column:
+                  name: color_id
+
+        - addUniqueConstraint:
+            tableName: product_variants
+            columnNames: product_id, size_id, color_id
+            constraintName: uk_product_variant
+
+        - addForeignKeyConstraint:
+            baseTableName: product_variants
+            baseColumnNames: product_id
+            referencedTableName: products
+            referencedColumnNames: id
+            constraintName: fk_variant_product
+
+        - addForeignKeyConstraint:
+            baseTableName: product_variants
+            baseColumnNames: size_id
+            referencedTableName: sizes
+            referencedColumnNames: id
+            constraintName: fk_variant_size
+
+        - addForeignKeyConstraint:
+            baseTableName: product_variants
+            baseColumnNames: color_id
+            referencedTableName: colors
+            referencedColumnNames: id
+            constraintName: fk_variant_color
+
+  # =========================================================
+  # 8. PRODUCT IMAGES
+  # =========================================================
+  - changeSet:
+      id: 002-create-product-images
+      author: sneakerstore
+      changes:
+        - createTable:
+            tableName: product_images
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_product_images
+
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: image_url
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: is_primary
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: display_order
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+        - createIndex:
+            tableName: product_images
+            indexName: idx_product_image_product
+            columns:
+              - column:
+                  name: product_id
+
+        - addForeignKeyConstraint:
+            baseTableName: product_images
+            baseColumnNames: product_id
+            referencedTableName: products
+            referencedColumnNames: id
+            constraintName: fk_product_image_product

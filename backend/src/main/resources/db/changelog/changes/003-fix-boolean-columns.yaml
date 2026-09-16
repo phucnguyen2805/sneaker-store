@@ -1,0 +1,26 @@
+databaseChangeLog:
+  # =========================================================
+  # Sửa users.enabled
+  # Java Boolean -> Hibernate/JDBC BIT
+  # =========================================================
+  - changeSet:
+      id: 003-fix-users-enabled-type
+      author: sneakerstore
+      changes:
+        - modifyDataType:
+            tableName: users
+            columnName: enabled
+            newDataType: BIT(1)
+
+  # =========================================================
+  # Sửa product_images.is_primary
+  # Java Boolean -> Hibernate/JDBC BIT
+  # =========================================================
+  - changeSet:
+      id: 003-fix-product-image-primary-type
+      author: sneakerstore
+      changes:
+        - modifyDataType:
+            tableName: product_images
+            columnName: is_primary
+            newDataType: BIT(1)

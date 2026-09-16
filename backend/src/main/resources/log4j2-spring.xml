@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration status="WARN">
+
+    <!--
+        Thuộc tính dùng chung cho toàn bộ logging.
+    -->
+    <Properties>
+
+        <!--
+            Thư mục chứa log.
+            Khi chạy ứng dụng, thư mục logs sẽ được tạo
+            tại thư mục gốc của Backend.
+        -->
+        <Property name="LOG_DIR">logs</Property>
+
+        <!--
+            Format log trên Console và File.
+
+            %d        : thời gian
+            %-5level  : mức log
+            [%t]      : tên thread
+            %c        : logger/class
+            %msg      : nội dung log
+            %n        : xuống dòng
+        -->
+        <Property name="LOG_PATTERN">
+            %d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %c - %msg%n
+        </Property>
+
+    </Properties>
+
+    <!-- ===================================================== -->
+    <!-- APPENDERS                                             -->
+    <!-- ===================================================== -->
+
+    <Appenders>
+
+        <!-- ================================================= -->
+        <!-- 1. CONSOLE                                       -->
+        <!-- ================================================= -->
+
+        <Console name="Console" target="SYSTEM_OUT">
+
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+
+        </Console>
+
+
+        <!-- ================================================= -->
+        <!-- 2. APPLICATION LOG                               -->
+        <!-- ================================================= -->
+
+        <RollingFile
+                name="ApplicationFile"
+                fileName="${LOG_DIR}/application.log"
+                filePattern="${LOG_DIR}/application-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+
+            <Policies>
+
+                <!--
+                    Tạo file log mới mỗi ngày.
+                -->
+                <TimeBasedTriggeringPolicy interval="1"/>
+
+                <!--
+                    Nếu file trong ngày quá lớn
+                    thì tạo file mới.
+                -->
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+
+            </Policies>
+
+            <!--
+                Giữ tối đa 30 file log.
+            -->
+            <DefaultRolloverStrategy max="30"/>
+
+        </RollingFile>
+
+
+        <!-- ================================================= -->
+        <!-- 3. ERROR LOG                                     -->
+        <!-- ================================================= -->
+
+        <RollingFile
+                name="ErrorFile"
+                fileName="${LOG_DIR}/error.log"
+                filePattern="${LOG_DIR}/error-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+
+            <Policies>
+
+                <TimeBasedTriggeringPolicy interval="1"/>
+
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+
+            </Policies>
+
+            <DefaultRolloverStrategy max="30"/>
+
+        </RollingFile>
+
+    </Appenders>
+
+
+    <!-- ===================================================== -->
+    <!-- LOGGERS                                               -->
+    <!-- ===================================================== -->
+
+    <Loggers>
+
+        <!--
+            Logger cho code của chính project.
+        -->
+        <Logger name="com.sneakerstore" level="DEBUG" additivity="false">
+
+            <AppenderRef ref="Console"/>
+
+            <AppenderRef ref="ApplicationFile"/>
+
+            <AppenderRef
+                    ref="ErrorFile"
+                    level="ERROR"/>
+
+        </Logger>
+
+
+        <!--
+            Spring Boot framework.
+            Chỉ cần INFO để tránh log quá nhiều.
+        -->
+        <Logger name="org.springframework" level="INFO"/>
+
+
+        <!--
+            Hibernate.
+            INFO giúp theo dõi JPA nhưng không làm console
+            quá nhiều thông tin.
+        -->
+        <Logger name="org.hibernate" level="INFO"/>
+
+
+        <!--
+            Liquibase.
+        -->
+        <Logger name="liquibase" level="INFO"/>
+
+
+        <!--
+            Logger gốc.
+        -->
+        <Root level="INFO">
+
+            <AppenderRef ref="Console"/>
+
+            <AppenderRef ref="ApplicationFile"/>
+
+            <AppenderRef
+                    ref="ErrorFile"
+                    level="ERROR"/>
+
+        </Root>
+
+    </Loggers>
+
+</Configuration>
