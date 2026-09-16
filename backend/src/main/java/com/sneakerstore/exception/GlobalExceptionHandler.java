@@ -159,6 +159,34 @@ public class GlobalExceptionHandler {
 
         /*
          * =========================================================
+         * DUPLICATE RESOURCE - 409
+         * =========================================================
+         *
+         * Dùng khi Client cố tạo tài nguyên đã tồn tại.
+         *
+         * Ví dụ:
+         * Product + Size + Color đã tồn tại.
+         */
+        @ExceptionHandler(DuplicateResourceException.class)
+        public ResponseEntity<Map<String, Object>> handleDuplicateResource(
+                        DuplicateResourceException exception,
+                        HttpServletRequest request) {
+
+                Map<String, Object> body = new HashMap<>();
+
+                body.put("timestamp", LocalDateTime.now());
+                body.put("status", HttpStatus.CONFLICT.value());
+                body.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+                body.put("message", exception.getMessage());
+                body.put("path", request.getRequestURI());
+
+                return ResponseEntity
+                                .status(HttpStatus.CONFLICT)
+                                .body(body);
+        }
+
+        /*
+         * =========================================================
          * 5. OTHER RUNTIME EXCEPTION - 500
          * =========================================================
          */

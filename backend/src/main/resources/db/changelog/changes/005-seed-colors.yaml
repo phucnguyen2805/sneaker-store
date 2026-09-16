@@ -1,0 +1,47 @@
+databaseChangeLog:
+  # =========================================================
+  # SEED COLORS
+  # =========================================================
+  - changeSet:
+      id: 005-seed-colors
+      author: sneakerstore
+      changes:
+        - insert:
+            tableName: colors
+            columns:
+              - column:
+                  name: name
+                  value: White
+              - column:
+                  name: hex_code
+                  value: "#FFFFFF"
+
+        - insert:
+            tableName: colors
+            columns:
+              - column:
+                  name: name
+                  value: Black
+              - column:
+                  name: hex_code
+                  value: "#000000"
+
+        - insert:
+            tableName: colors
+            columns:
+              - column:
+                  name: name
+                  value: Red
+              - column:
+                  name: hex_code
+                  value: "#FF0000"
+
+        - insert:
+            tableName: colors
+            columns:
+              - column:
+                  name: name
+                  value: Blue
+              - column:
+                  name: hex_code
+                  value: "#0000FF"

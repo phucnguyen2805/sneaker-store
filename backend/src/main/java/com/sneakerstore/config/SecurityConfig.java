@@ -84,7 +84,9 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(authorize -> authorize
 
                                                 /*
-                                                 * Register và Login là public.
+                                                 * =====================================================
+                                                 * AUTH PUBLIC API
+                                                 * =====================================================
                                                  */
                                                 .requestMatchers(
                                                                 "/api/auth/register",
@@ -92,8 +94,31 @@ public class SecurityConfig {
                                                 .permitAll()
 
                                                 /*
-                                                 * Tất cả API khác hiện tại yêu cầu
-                                                 * người dùng đã authenticate.
+                                                 * =====================================================
+                                                 * PRODUCT PUBLIC API
+                                                 * =====================================================
+                                                 *
+                                                 * Khách chưa đăng nhập vẫn có thể:
+                                                 *
+                                                 * GET /api/products
+                                                 * GET /api/products/{id}
+                                                 */
+                                                .requestMatchers(
+                                                                org.springframework.http.HttpMethod.GET,
+                                                                "/api/products",
+                                                                "/api/products/**",
+                                                                "/api/sizes",
+                                                                "/api/sizes/**",
+                                                                "/api/colors",
+                                                                "/api/colors/**",
+                                                                "/api/variants",
+                                                                "/api/variants/**")
+                                                .permitAll()
+
+                                                /*
+                                                 * =====================================================
+                                                 * CÁC API CÒN LẠI
+                                                 * =====================================================
                                                  */
                                                 .anyRequest().authenticated())
 

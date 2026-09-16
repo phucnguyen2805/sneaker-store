@@ -1,0 +1,98 @@
+databaseChangeLog:
+  # =========================================================
+  # SEED BRANDS
+  # =========================================================
+  - changeSet:
+      id: 004-seed-brands
+      author: sneakerstore
+      changes:
+        - insert:
+            tableName: brands
+            columns:
+              - column:
+                  name: name
+                  value: Nike
+
+        - insert:
+            tableName: brands
+            columns:
+              - column:
+                  name: name
+                  value: Adidas
+
+        - insert:
+            tableName: brands
+            columns:
+              - column:
+                  name: name
+                  value: Puma
+
+  # =========================================================
+  # SEED CATEGORIES
+  # =========================================================
+  - changeSet:
+      id: 004-seed-categories
+      author: sneakerstore
+      changes:
+        - insert:
+            tableName: categories
+            columns:
+              - column:
+                  name: name
+                  value: Running
+
+        - insert:
+            tableName: categories
+            columns:
+              - column:
+                  name: name
+                  value: Lifestyle
+
+        - insert:
+            tableName: categories
+            columns:
+              - column:
+                  name: name
+                  value: Basketball
+
+  # =========================================================
+  # SEED SIZES
+  # =========================================================
+  - changeSet:
+      id: 004-seed-sizes
+      author: sneakerstore
+      changes:
+        - insert:
+            tableName: sizes
+            columns:
+              - column:
+                  name: name
+                  value: "38"
+
+        - insert:
+            tableName: sizes
+            columns:
+              - column:
+                  name: name
+                  value: "39"
+
+        - insert:
+            tableName: sizes
+            columns:
+              - column:
+                  name: name
+                  value: "40"
+
+        - insert:
+            tableName: sizes
+            columns:
+              - column:
+                  name: name
+                  value: "41"
+
+        - insert:
+            tableName: sizes
+            columns:
+              - column:
+                  name: name
+                  value: "42"
