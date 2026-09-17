@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "products", indexes = {
@@ -69,6 +70,25 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false, foreignKey = @ForeignKey(name = "fk_product_category"))
     private Category category;
+
+    /*
+     * Một Product có thể có nhiều ProductVariant.
+     *
+     * Ví dụ:
+     * Product = Nike Air Force 1
+     *
+     * Các variant:
+     * - Size 40 + White
+     * - Size 41 + White
+     * - Size 40 + Black
+     *
+     * mappedBy = "product" trỏ tới field product
+     * trong ProductVariant.
+     *
+     * Không tạo thêm cột mới trong bảng products.
+     */
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    private List<ProductVariant> variants;
 
     /*
      * Thời điểm tạo sản phẩm.

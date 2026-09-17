@@ -10,221 +10,195 @@ import com.sneakerstore.exception.ResourceNotFoundException;
 import com.sneakerstore.repository.BrandRepository;
 import com.sneakerstore.repository.CategoryRepository;
 import com.sneakerstore.repository.ProductRepository;
+import com.sneakerstore.specification.ProductSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.sneakerstore.repository.SizeRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class ProductService {
 
-    private final ProductRepository productRepository;
-    private final BrandRepository brandRepository;
-    private final CategoryRepository categoryRepository;
+        private final ProductRepository productRepository;
+        private final BrandRepository brandRepository;
+        private final CategoryRepository categoryRepository;
+        private final SizeRepository sizeRepository;
 
-    public ProductService(
-            ProductRepository productRepository,
-            BrandRepository brandRepository,
-            CategoryRepository categoryRepository) {
-        this.productRepository = productRepository;
-        this.brandRepository = brandRepository;
-        this.categoryRepository = categoryRepository;
-    }
+        public ProductService(
+                        ProductRepository productRepository,
+                        BrandRepository brandRepository,
+                        CategoryRepository categoryRepository,
+                        SizeRepository sizeRepository) {
+                this.productRepository = productRepository;
+                this.brandRepository = brandRepository;
+                this.categoryRepository = categoryRepository;
+                this.sizeRepository = sizeRepository;
+        }
 
-    /*
-     * =========================================================
-     * CREATE PRODUCT
-     * =========================================================
-     *
-     * Luồng:
-     *
-     * ProductCreateRequest
-     * ↓
-     * Tìm Brand
-     * ↓
-     * Tìm Category
-     * ↓
-     * Tạo Product Entity
-     * ↓
-     * Lưu MySQL
-     * ↓
-     * ProductResponse
-     */
-    @Transactional
-    public ProductResponse createProduct(ProductCreateRequest request) {
+        public ProductResponse createProduct(ProductCreateRequest request) {
 
-        /*
-         * Tìm Brand theo brandId được gửi từ Client.
+                Brand brand = brandRepository.findById(request.getBrandId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy brand với id: "
+                                                                + request.getBrandId()));
+
+                Category category = categoryRepository.findById(
+                                request.getCategoryId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy category với id: "
+                                                                + request.getCategoryId()));
+
+                Product product = new Product();
+
+                product.setName(request.getName());
+                product.setDescription(request.getDescription());
+                product.setBasePrice(request.getBasePrice());
+                product.setBrand(brand);
+                product.setCategory(category);
+
+                Product savedProduct = productRepository.save(product);
+
+                return toResponse(savedProduct);
+        }
+
+        public List<ProductResponse> getAllProducts() {
+
+                return productRepository.findAll()
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
+        }
+
+        /**
+         * Tìm Product theo nhiều điều kiện.
          *
-         * Nếu không tồn tại → 404.
-         */
-        Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy Brand với id: "
-                                + request.getBrandId()));
-
-        /*
-         * Tìm Category theo categoryId.
-         */
-        Category category = categoryRepository.findById(
-                request.getCategoryId()).orElseThrow(
-                        () -> new ResourceNotFoundException(
-                                "Không tìm thấy Category với id: "
-                                        + request.getCategoryId()));
-
-        /*
-         * Tạo Product Entity.
-         */
-        Product product = new Product();
-
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setBasePrice(request.getBasePrice());
-        product.setBrand(brand);
-        product.setCategory(category);
-
-        /*
-         * save() sẽ insert vào database.
+         * Có thể truyền null cho bất kỳ điều kiện nào.
          *
-         * createdAt / updatedAt được Product Entity
-         * tự thiết lập trong @PrePersist.
-         */
-        Product savedProduct = productRepository.save(product);
-
-        return toProductResponse(savedProduct);
-    }
-
-    /*
-     * =========================================================
-     * GET ALL PRODUCTS
-     * =========================================================
-     */
-    @Transactional(readOnly = true)
-    public List<ProductResponse> getAllProducts() {
-
-        return productRepository.findAll()
-                .stream()
-                .map(this::toProductResponse)
-                .toList();
-    }
-
-    /*
-     * =========================================================
-     * GET PRODUCT BY ID
-     * =========================================================
-     */
-    @Transactional(readOnly = true)
-    public ProductResponse getProductById(Long productId) {
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy Product với id: "
-                                + productId));
-
-        return toProductResponse(product);
-    }
-
-    /*
-     * =========================================================
-     * UPDATE PRODUCT
-     * =========================================================
-     */
-    @Transactional
-    public ProductResponse updateProduct(
-            Long productId,
-            ProductUpdateRequest request) {
-
-        /*
-         * Tìm Product cần sửa.
-         */
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy Product với id: "
-                                + productId));
-
-        /*
-         * Tìm Brand mới.
-         */
-        Brand brand = brandRepository.findById(request.getBrandId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy Brand với id: "
-                                + request.getBrandId()));
-
-        /*
-         * Tìm Category mới.
-         */
-        Category category = categoryRepository.findById(
-                request.getCategoryId()).orElseThrow(
-                        () -> new ResourceNotFoundException(
-                                "Không tìm thấy Category với id: "
-                                        + request.getCategoryId()));
-
-        /*
-         * Cập nhật các field.
-         */
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setBasePrice(request.getBasePrice());
-        product.setBrand(brand);
-        product.setCategory(category);
-
-        /*
-         * Vì Entity đang được quản lý trong transaction,
-         * save() sẽ ghi thay đổi xuống database.
-         */
-        Product updatedProduct = productRepository.save(product);
-
-        return toProductResponse(updatedProduct);
-    }
-
-    /*
-     * =========================================================
-     * DELETE PRODUCT
-     * =========================================================
-     */
-    @Transactional
-    public void deleteProduct(Long productId) {
-
-        /*
-         * Kiểm tra Product tồn tại trước khi xóa.
-         */
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy Product với id: "
-                                + productId));
-
-        /*
-         * Hiện tại Product có ProductVariant và ProductImage.
+         * Ví dụ:
+         * - keyword = "nike"
+         * - brandId = 1
+         * - sizeId = 3
+         * - minPrice = 1000000
+         * - maxPrice = 3000000
          *
-         * Vì các bảng này có Foreign Key,
-         * chúng ta chưa nên xóa Product trực tiếp
-         * trước khi xử lý dữ liệu liên quan.
-         *
-         * Việc cascade/delete strategy sẽ được thiết kế
-         * khi hoàn thiện Variant và Image.
+         * Không có điều kiện nào -> trả về toàn bộ Product.
          */
-        productRepository.delete(product);
-    }
+        /**
+         * Tìm kiếm Product theo nhiều điều kiện.
+         */
+        public List<ProductResponse> searchProducts(
+                        String keyword,
+                        Long brandId,
+                        Long categoryId,
+                        Long sizeId,
+                        BigDecimal minPrice,
+                        BigDecimal maxPrice) {
 
-    /*
-     * =========================================================
-     * ENTITY -> RESPONSE
-     * =========================================================
-     *
-     * Không trả Entity trực tiếp ra Controller.
-     */
-    private ProductResponse toProductResponse(Product product) {
+                /*
+                 * Nếu client truyền brandId nhưng Brand không tồn tại
+                 * thì trả 404.
+                 */
+                if (brandId != null && !brandRepository.existsById(brandId)) {
+                        throw new ResourceNotFoundException(
+                                        "Không tìm thấy brand với id: " + brandId);
+                }
 
-        return new ProductResponse(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getBasePrice(),
-                product.getBrand().getId(),
-                product.getBrand().getName(),
-                product.getCategory().getId(),
-                product.getCategory().getName(),
-                product.getCreatedAt(),
-                product.getUpdatedAt());
-    }
+                /*
+                 * Nếu client truyền categoryId nhưng Category không tồn tại
+                 * thì trả 404.
+                 */
+                if (categoryId != null
+                                && !categoryRepository.existsById(categoryId)) {
+
+                        throw new ResourceNotFoundException(
+                                        "Không tìm thấy category với id: " + categoryId);
+                }
+
+                /*
+                 * Nếu client truyền sizeId nhưng Size không tồn tại
+                 * thì trả 404.
+                 */
+                if (sizeId != null && !sizeRepository.existsById(sizeId)) {
+                        throw new ResourceNotFoundException(
+                                        "Không tìm thấy size với id: " + sizeId);
+                }
+
+                Specification<Product> specification = ProductSpecification.filter(
+                                keyword,
+                                brandId,
+                                categoryId,
+                                sizeId,
+                                minPrice,
+                                maxPrice);
+
+                return productRepository.findAll(specification)
+                                .stream()
+                                .map(this::toResponse)
+                                .toList();
+        }
+
+        public ProductResponse getProductById(Long id) {
+
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy product với id: " + id));
+
+                return toResponse(product);
+        }
+
+        public ProductResponse updateProduct(
+                        Long id,
+                        ProductUpdateRequest request) {
+
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy product với id: " + id));
+
+                Brand brand = brandRepository.findById(request.getBrandId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy brand với id: "
+                                                                + request.getBrandId()));
+
+                Category category = categoryRepository.findById(
+                                request.getCategoryId())
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy category với id: "
+                                                                + request.getCategoryId()));
+
+                product.setName(request.getName());
+                product.setDescription(request.getDescription());
+                product.setBasePrice(request.getBasePrice());
+                product.setBrand(brand);
+                product.setCategory(category);
+
+                Product updatedProduct = productRepository.save(product);
+
+                return toResponse(updatedProduct);
+        }
+
+        public void deleteProduct(Long id) {
+
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy product với id: " + id));
+
+                productRepository.delete(product);
+        }
+
+        private ProductResponse toResponse(Product product) {
+
+                return new ProductResponse(
+                                product.getId(),
+                                product.getName(),
+                                product.getDescription(),
+                                product.getBasePrice(),
+                                product.getBrand().getId(),
+                                product.getBrand().getName(),
+                                product.getCategory().getId(),
+                                product.getCategory().getName(),
+                                product.getCreatedAt(),
+                                product.getUpdatedAt());
+        }
 }

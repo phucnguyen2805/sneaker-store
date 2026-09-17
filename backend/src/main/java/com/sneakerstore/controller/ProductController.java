@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -22,100 +23,119 @@ public class ProductController {
         this.productService = productService;
     }
 
-    /*
-     * =========================================================
-     * GET ALL PRODUCTS
-     * =========================================================
-     *
-     * GET /api/products
-     *
-     * Public API.
-     *
-     * Khách chưa đăng nhập cũng có thể xem danh sách sản phẩm.
+    /**
+     * Lấy toàn bộ Product.
      */
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAllProducts() {
 
-        List<ProductResponse> products = productService.getAllProducts();
+        return ResponseEntity.ok(
+                productService.getAllProducts());
+    }
+
+    /**
+     * Tìm kiếm và lọc Product.
+     *
+     * Có thể dùng riêng từng điều kiện hoặc kết hợp nhiều điều kiện.
+     *
+     * Ví dụ:
+     *
+     * GET /api/products/search?keyword=nike
+     * GET /api/products/search?brandId=1
+     * GET /api/products/search?categoryId=2
+     * GET /api/products/search?sizeId=1
+     * GET /api/products/search?minPrice=1000000
+     * GET /api/products/search?minPrice=1000000&maxPrice=3000000
+     *
+     * Có thể kết hợp:
+     *
+     * GET /api/products/search
+     * ?keyword=air
+     * &brandId=1
+     * &categoryId=2
+     * &sizeId=1
+     * &minPrice=1000000
+     * &maxPrice=3000000
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponse>> searchProducts(
+
+            @RequestParam(required = false) String keyword,
+
+            @RequestParam(required = false) Long brandId,
+
+            @RequestParam(required = false) Long categoryId,
+
+            @RequestParam(required = false) Long sizeId,
+
+            @RequestParam(required = false) BigDecimal minPrice,
+
+            @RequestParam(required = false) BigDecimal maxPrice) {
+
+        List<ProductResponse> products = productService.searchProducts(
+                keyword,
+                brandId,
+                categoryId,
+                sizeId,
+                minPrice,
+                maxPrice);
 
         return ResponseEntity.ok(products);
     }
 
-    /*
-     * =========================================================
-     * GET PRODUCT BY ID
-     * =========================================================
-     *
-     * GET /api/products/{id}
-     *
-     * Public API.
+    /**
+     * Lấy Product theo ID.
      */
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(
             @PathVariable Long id) {
 
-        ProductResponse product = productService.getProductById(id);
-
-        return ResponseEntity.ok(product);
+        return ResponseEntity.ok(
+                productService.getProductById(id));
     }
 
-    /*
-     * =========================================================
-     * CREATE PRODUCT
-     * =========================================================
+    /**
+     * Tạo Product.
      *
-     * POST /api/products
-     *
-     * Chỉ ADMIN được phép tạo Product.
+     * Chỉ ADMIN.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductResponse> createProduct(
             @Valid @RequestBody ProductCreateRequest request) {
 
-        ProductResponse product = productService.createProduct(request);
+        ProductResponse response = productService.createProduct(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(product);
+                .body(response);
     }
 
-    /*
-     * =========================================================
-     * UPDATE PRODUCT
-     * =========================================================
+    /**
+     * Cập nhật Product.
      *
-     * PUT /api/products/{id}
-     *
-     * Chỉ ADMIN được phép cập nhật.
+     * Chỉ ADMIN.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
             @Valid @RequestBody ProductUpdateRequest request) {
 
-        ProductResponse product = productService.updateProduct(id, request);
+        ProductResponse response = productService.updateProduct(
+                id,
+                request);
 
-        return ResponseEntity.ok(product);
+        return ResponseEntity.ok(response);
     }
 
-    /*
-     * =========================================================
-     * DELETE PRODUCT
-     * =========================================================
+    /**
+     * Xóa Product.
      *
-     * DELETE /api/products/{id}
-     *
-     * Chỉ ADMIN được phép xóa.
-     *
-     * Lưu ý:
-     * Product có Variant/Image nên chiến lược xóa dữ liệu
-     * liên quan sẽ được hoàn thiện trước khi test DELETE
-     * trên dữ liệu có quan hệ con.
+     * Chỉ ADMIN.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id) {
 
