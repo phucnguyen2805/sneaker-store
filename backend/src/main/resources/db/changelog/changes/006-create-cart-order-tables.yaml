@@ -1,0 +1,283 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-cart-order-tables
+      author: sneakerstore
+
+      changes:
+        # ============================================================
+        # CARTS
+        # ============================================================
+        - createTable:
+            tableName: carts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_carts
+
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: carts
+            columnNames: user_id
+            constraintName: uk_cart_user
+
+        - addForeignKeyConstraint:
+            baseTableName: carts
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_cart_user
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: carts
+            indexName: idx_cart_user
+            columns:
+              - column:
+                  name: user_id
+
+        # ============================================================
+        # CART ITEMS
+        # ============================================================
+        - createTable:
+            tableName: cart_items
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_cart_items
+
+              - column:
+                  name: cart_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: product_variant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: quantity
+                  type: INT
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: cart_items
+            columnNames: cart_id, product_variant_id
+            constraintName: uk_cart_item_variant
+
+        - addForeignKeyConstraint:
+            baseTableName: cart_items
+            baseColumnNames: cart_id
+            referencedTableName: carts
+            referencedColumnNames: id
+            constraintName: fk_cart_item_cart
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: cart_items
+            baseColumnNames: product_variant_id
+            referencedTableName: product_variants
+            referencedColumnNames: id
+            constraintName: fk_cart_item_variant
+
+        - createIndex:
+            tableName: cart_items
+            indexName: idx_cart_item_cart
+            columns:
+              - column:
+                  name: cart_id
+
+        - createIndex:
+            tableName: cart_items
+            indexName: idx_cart_item_variant
+            columns:
+              - column:
+                  name: product_variant_id
+
+        # ============================================================
+        # ORDERS
+        # ============================================================
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_orders
+
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: total_amount
+                  type: DECIMAL(15,2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: orders
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_order_user
+
+        - createIndex:
+            tableName: orders
+            indexName: idx_order_user
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: orders
+            indexName: idx_order_status
+            columns:
+              - column:
+                  name: status
+
+        # ============================================================
+        # ORDER ITEMS
+        # ============================================================
+        - createTable:
+            tableName: order_items
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_order_items
+
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: product_variant_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: product_name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: size_name
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: color_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: unit_price
+                  type: DECIMAL(15,2)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: quantity
+                  type: INT
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: subtotal
+                  type: DECIMAL(15,2)
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: order_items
+            baseColumnNames: order_id
+            referencedTableName: orders
+            referencedColumnNames: id
+            constraintName: fk_order_item_order
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: order_items
+            baseColumnNames: product_variant_id
+            referencedTableName: product_variants
+            referencedColumnNames: id
+            constraintName: fk_order_item_variant
+
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_item_order
+            columns:
+              - column:
+                  name: order_id
+
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_item_variant
+            columns:
+              - column:
+                  name: product_variant_id
