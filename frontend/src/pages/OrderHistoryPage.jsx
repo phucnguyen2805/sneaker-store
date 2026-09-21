@@ -40,160 +40,323 @@ function OrderHistoryPage() {
         return "Đã hủy";
 
       default:
-        return status;
+        return status || "Không xác định";
     }
   };
 
   const getStatusClass = (status) => {
     switch (status) {
       case "PENDING":
-        return "bg-amber-50 text-amber-700";
+        return "border-amber-200 bg-amber-50 text-amber-700";
 
       case "CONFIRMED":
-        return "bg-blue-50 text-blue-700";
+        return "border-blue-200 bg-blue-50 text-blue-700";
 
       case "COMPLETED":
-        return "bg-green-50 text-green-700";
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
 
       case "CANCELLED":
-        return "bg-red-50 text-red-700";
+        return "border-red-200 bg-red-50 text-red-700";
 
       default:
-        return "bg-neutral-100 text-neutral-600";
+        return "border-neutral-200 bg-neutral-100 text-neutral-600";
     }
   };
 
-  return (
-    <section className="mx-auto max-w-7xl px-6 py-12">
-      <div className="mb-10">
-        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
-          My Orders
-        </p>
+  const getStatusDotClass = (status) => {
+    switch (status) {
+      case "PENDING":
+        return "bg-amber-500";
 
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-950">
-          Đơn hàng của tôi
-        </h1>
+      case "CONFIRMED":
+        return "bg-blue-500";
 
-        <p className="mt-3 text-base text-neutral-500">
-          Theo dõi các đơn hàng bạn đã đặt tại Sneaker Store.
-        </p>
+      case "COMPLETED":
+        return "bg-emerald-500";
+
+      case "CANCELLED":
+        return "bg-red-500";
+
+      default:
+        return "bg-neutral-400";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f6]">
+        <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 lg:px-8">
+          <div className="border-b border-neutral-200 pb-8">
+            <div className="h-3 w-24 animate-pulse rounded bg-neutral-200" />
+
+            <div className="mt-4 h-10 w-64 max-w-full animate-pulse rounded bg-neutral-200" />
+
+            <div className="mt-3 h-4 w-96 max-w-full animate-pulse rounded bg-neutral-200" />
+          </div>
+
+          <div className="mt-8 space-y-5">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="rounded-[1.5rem] border border-neutral-200 bg-white p-6"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-3">
+                    <div className="h-5 w-44 animate-pulse rounded bg-neutral-100" />
+                    <div className="h-4 w-36 animate-pulse rounded bg-neutral-100" />
+                  </div>
+
+                  <div className="space-y-2 sm:text-right">
+                    <div className="ml-auto h-3 w-20 animate-pulse rounded bg-neutral-100" />
+                    <div className="ml-auto h-6 w-32 animate-pulse rounded bg-neutral-100" />
+                  </div>
+                </div>
+
+                <div className="my-6 h-px bg-neutral-100" />
+
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="h-16 w-16 animate-pulse rounded-xl bg-neutral-100" />
+
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-3/5 animate-pulse rounded bg-neutral-100" />
+                      <div className="h-3 w-40 animate-pulse rounded bg-neutral-100" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <div className="h-16 w-16 animate-pulse rounded-xl bg-neutral-100" />
+
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-2/5 animate-pulse rounded bg-neutral-100" />
+                      <div className="h-3 w-32 animate-pulse rounded bg-neutral-100" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
+    );
+  }
 
-      {loading && (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center shadow-sm">
-          <p className="text-sm text-neutral-500">
-            Đang tải lịch sử đơn hàng...
-          </p>
-        </div>
-      )}
+  return (
+    <div className="min-h-screen bg-[#f7f7f6]">
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-12 lg:px-8 lg:pb-28">
+        {/* Heading */}
+        <div className="flex flex-col gap-6 border-b border-neutral-200 pb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
+              My Orders
+            </p>
 
-      {!loading && error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
+            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">
+              Đơn hàng của tôi
+            </h1>
 
-      {!loading && !error && orders.length === 0 && (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-12 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-neutral-950">
-            Bạn chưa có đơn hàng
-          </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-500 sm:text-base">
+              Theo dõi trạng thái và xem lại những đơn hàng bạn đã đặt tại
+              Sneaker Store.
+            </p>
+          </div>
 
-          <p className="mt-3 text-sm text-neutral-500">
-            Hãy khám phá các mẫu sneaker và đặt đơn hàng đầu tiên.
-          </p>
-
-          <Link
-            to="/products"
-            className="mt-6 inline-block rounded-xl bg-neutral-950 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-800"
-          >
-            Xem sản phẩm
-          </Link>
-        </div>
-      )}
-
-      {!loading && !error && orders.length > 0 && (
-        <div className="space-y-5">
-          {orders.map((order) => (
-            <article
-              key={order.id}
-              className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-shadow duration-200 hover:shadow-md"
+          {!loading && !error && orders.length > 0 && (
+            <Link
+              to="/products"
+              className="self-start rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm font-medium text-neutral-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-50 sm:self-auto"
             >
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-lg font-semibold text-neutral-950">
-                      Đơn hàng #{order.id}
-                    </h2>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                        order.status,
-                      )}`}
-                    >
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-sm text-neutral-500">
-                    Đặt lúc: {formatDate(order.createdAt)}
-                  </p>
-                </div>
-
-                <div className="text-left sm:text-right">
-                  <p className="text-sm text-neutral-500">Tổng tiền</p>
-
-                  <p className="mt-1 text-xl font-bold text-neutral-950">
-                    {formatPrice(order.totalAmount)} ₫
-                  </p>
-                </div>
-              </div>
-
-              <div className="my-6 h-px bg-neutral-200" />
-
-              <div className="space-y-4">
-                {order.items?.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-neutral-100">
-                      <span className="text-[11px] text-neutral-400">
-                        Sneaker
-                      </span>
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-neutral-900">
-                        {item.productName}
-                      </p>
-
-                      <p className="mt-1 text-sm text-neutral-500">
-                        Size {item.sizeName} · {item.colorName}
-                      </p>
-
-                      <p className="mt-1 text-xs text-neutral-400">
-                        SL: {item.quantity}
-                      </p>
-                    </div>
-
-                    <p className="text-sm font-semibold text-neutral-900">
-                      {formatPrice(item.subtotal)} ₫
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Link
-                  to={`/orders/${order.id}`}
-                  className="rounded-xl border border-neutral-300 px-5 py-2.5 text-sm font-semibold text-neutral-900 transition-colors duration-200 hover:bg-neutral-50"
-                >
-                  Xem chi tiết
-                </Link>
-              </div>
-            </article>
-          ))}
+              Tiếp tục mua sắm
+            </Link>
+          )}
         </div>
-      )}
-    </section>
+
+        {/* Error */}
+        {!loading && error && (
+          <div className="mt-8 rounded-[1.5rem] border border-red-200 bg-red-50 p-6">
+            <p className="text-sm font-medium leading-6 text-red-700">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!loading && !error && orders.length === 0 && (
+          <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-[0_15px_45px_rgba(0,0,0,0.04)]">
+            <div className="px-6 py-20 text-center sm:px-10 sm:py-24">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-neutral-400">
+                My Orders
+              </p>
+
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-neutral-950">
+                Bạn chưa có đơn hàng
+              </h2>
+
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-500">
+                Hãy khám phá các mẫu sneaker và đặt đơn hàng đầu tiên của bạn.
+              </p>
+
+              <Link
+                to="/products"
+                className="mt-7 inline-flex items-center gap-3 rounded-xl bg-neutral-950 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
+              >
+                <span>Xem sản phẩm</span>
+
+                <span className="transition-transform duration-300 hover:translate-x-1">
+                  →
+                </span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Order list */}
+        {!loading && !error && orders.length > 0 && (
+          <div className="mt-8 space-y-5">
+            {orders.map((order) => {
+              const items = order.items || [];
+              const totalQuantity = items.reduce(
+                (total, item) => total + Number(item.quantity || 0),
+                0,
+              );
+
+              return (
+                <article
+                  key={order.id}
+                  className="overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-[0_18px_45px_rgba(0,0,0,0.06)]"
+                >
+                  {/* Order header */}
+                  <div className="border-b border-neutral-100 px-5 py-5 sm:px-6 sm:py-6">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h2 className="text-lg font-semibold tracking-tight text-neutral-950">
+                            Đơn hàng #{order.id}
+                          </h2>
+
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusClass(
+                              order.status,
+                            )}`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(
+                                order.status,
+                              )}`}
+                            />
+
+                            {getStatusLabel(order.status)}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-neutral-400">
+                          <span>
+                            Đặt lúc:{" "}
+                            <span className="font-medium text-neutral-600">
+                              {formatDate(order.createdAt)}
+                            </span>
+                          </span>
+
+                          <span>{items.length} dòng sản phẩm</span>
+
+                          <span>{totalQuantity} sản phẩm</span>
+                        </div>
+                      </div>
+
+                      <div className="sm:text-right">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-neutral-400">
+                          Tổng tiền
+                        </p>
+
+                        <p className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
+                          {formatPrice(order.totalAmount)} ₫
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order items */}
+                  <div className="divide-y divide-neutral-100 px-5 sm:px-6">
+                    {items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center"
+                      >
+                        {/* Product visual */}
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_35%_30%,#ffffff,transparent_30%),linear-gradient(135deg,#f5f5f5,#e5e5e5)]">
+                          <div className="text-center px-2">
+                            <p className="text-[8px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                              Sneaker
+                            </p>
+
+                            <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-4 text-neutral-500">
+                              {item.productName}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Product info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-neutral-950">
+                            {item.productName}
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
+                              Size {item.sizeName}
+                            </span>
+
+                            <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
+                              {item.colorName}
+                            </span>
+
+                            <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
+                              SL: {item.quantity}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Item price */}
+                        <div className="flex items-end justify-between gap-6 sm:min-w-36 sm:flex-col sm:items-end">
+                          <p className="text-xs text-neutral-400">
+                            {formatPrice(item.unitPrice)} ₫ / sản phẩm
+                          </p>
+
+                          <p className="text-base font-semibold text-neutral-950">
+                            {formatPrice(item.subtotal)} ₫
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex flex-col gap-3 border-t border-neutral-100 bg-neutral-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <p className="text-xs text-neutral-400">
+                      Mã đơn:{" "}
+                      <span className="font-semibold text-neutral-600">
+                        #{order.id}
+                      </span>
+                    </p>
+
+                    <Link
+                      to={`/orders/${order.id}`}
+                      className="group inline-flex items-center justify-center gap-3 rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-950 hover:text-white active:translate-y-0"
+                    >
+                      <span>Xem chi tiết</span>
+
+                      <span className="transition-transform duration-200 group-hover:translate-x-1">
+                        →
+                      </span>
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 

@@ -17,6 +17,7 @@ function ProductDetailPage() {
   const navigate = useNavigate();
 
   const { isAuthenticated } = useSelector((state) => state.auth);
+
   const { actionLoading, error: cartError } = useSelector(
     (state) => state.cart,
   );
@@ -51,25 +52,30 @@ function ProductDetailPage() {
         const sortedImages = Array.isArray(imageData)
           ? [...imageData].sort(
               (first, second) =>
-                (first.displayOrder || 0) - (second.displayOrder || 0),
+                Number(first.displayOrder || 0) -
+                Number(second.displayOrder || 0),
             )
           : [];
 
         setImages(sortedImages);
+        setActiveImageIndex(0);
 
         // Tự động chọn variant đầu tiên còn hàng.
-        const firstAvailableVariant = variantData.find(
-          (variant) => variant.stock > 0,
-        );
+        const firstAvailableVariant = Array.isArray(variantData)
+          ? variantData.find((variant) => variant.stock > 0)
+          : null;
 
         if (firstAvailableVariant) {
           setSelectedSizeId(firstAvailableVariant.sizeId);
           setSelectedColorId(firstAvailableVariant.colorId);
-        } else if (variantData.length > 0) {
+        } else if (Array.isArray(variantData) && variantData.length > 0) {
           // Nếu tất cả đều hết hàng thì vẫn chọn variant đầu tiên
-          // để người dùng thấy thông tin giá/stock của variant đó.
+          // để người dùng xem được giá và tình trạng tồn kho.
           setSelectedSizeId(variantData[0].sizeId);
           setSelectedColorId(variantData[0].colorId);
+        } else {
+          setSelectedSizeId(null);
+          setSelectedColorId(null);
         }
       } catch (requestError) {
         setError(
@@ -140,8 +146,7 @@ function ProductDetailPage() {
   const handleSizeChange = (sizeId) => {
     setSelectedSizeId(sizeId);
 
-    // Ưu tiên variant đúng cả Size + Color hiện tại,
-    // kể cả khi variant đó đang hết hàng.
+    // Ưu tiên giữ nguyên màu hiện tại nếu tồn tại variant tương ứng.
     const matchingVariant = variants.find(
       (variant) =>
         variant.sizeId === sizeId && variant.colorId === selectedColorId,
@@ -151,8 +156,7 @@ function ProductDetailPage() {
       return;
     }
 
-    // Nếu Size mới không có Color hiện tại,
-    // chuyển sang Color đầu tiên có variant với Size đó.
+    // Nếu không tồn tại, chọn màu đầu tiên có variant với size mới.
     const firstVariantForSize = variants.find(
       (variant) => variant.sizeId === sizeId,
     );
@@ -165,8 +169,7 @@ function ProductDetailPage() {
   const handleColorChange = (colorId) => {
     setSelectedColorId(colorId);
 
-    // Ưu tiên variant đúng cả Size + Color hiện tại,
-    // kể cả khi stock = 0.
+    // Ưu tiên giữ nguyên size hiện tại nếu tồn tại variant tương ứng.
     const matchingVariant = variants.find(
       (variant) =>
         variant.sizeId === selectedSizeId && variant.colorId === colorId,
@@ -176,8 +179,7 @@ function ProductDetailPage() {
       return;
     }
 
-    // Nếu Color mới không có Size hiện tại,
-    // chuyển sang Size đầu tiên có variant với Color đó.
+    // Nếu không tồn tại, chọn size đầu tiên có variant với màu mới.
     const firstVariantForColor = variants.find(
       (variant) => variant.colorId === colorId,
     );
@@ -225,28 +227,52 @@ function ProductDetailPage() {
 
   if (loading) {
     return (
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center">
-          <p className="text-sm text-neutral-500">Đang tải sản phẩm...</p>
-        </div>
-      </section>
+      <div className="min-h-screen bg-[#f7f7f6]">
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mb-8 h-5 w-32 animate-pulse rounded bg-neutral-200" />
+
+          <div className="grid gap-10 lg:grid-cols-2">
+            <div className="aspect-square animate-pulse rounded-[1.75rem] bg-neutral-200" />
+
+            <div className="space-y-5 pt-2">
+              <div className="h-3 w-24 animate-pulse rounded bg-neutral-200" />
+              <div className="h-12 w-4/5 animate-pulse rounded bg-neutral-200" />
+              <div className="h-8 w-40 animate-pulse rounded bg-neutral-200" />
+              <div className="h-24 w-full animate-pulse rounded bg-neutral-200" />
+
+              <div className="border-t border-neutral-200 pt-7">
+                <div className="h-4 w-20 animate-pulse rounded bg-neutral-200" />
+                <div className="mt-4 flex gap-3">
+                  <div className="h-12 w-16 animate-pulse rounded-xl bg-neutral-200" />
+                  <div className="h-12 w-16 animate-pulse rounded-xl bg-neutral-200" />
+                  <div className="h-12 w-16 animate-pulse rounded-xl bg-neutral-200" />
+                </div>
+              </div>
+
+              <div className="h-14 w-full animate-pulse rounded-xl bg-neutral-200" />
+            </div>
+          </div>
+        </section>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm text-red-600">{error}</p>
+      <div className="min-h-screen bg-[#f7f7f6]">
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-6">
+            <p className="text-sm font-medium text-red-700">{error}</p>
 
-          <Link
-            to="/products"
-            className="mt-4 inline-block text-sm font-semibold text-neutral-900 underline"
-          >
-            Quay lại danh sách sản phẩm
-          </Link>
-        </div>
-      </section>
+            <Link
+              to="/products"
+              className="mt-5 inline-flex items-center text-sm font-semibold text-neutral-900 transition-colors duration-200 hover:text-neutral-500"
+            >
+              ← Quay lại danh sách sản phẩm
+            </Link>
+          </div>
+        </section>
+      </div>
     );
   }
 
@@ -255,178 +281,285 @@ function ProductDetailPage() {
   }
 
   const currentImage = images[activeImageIndex];
+  const currentPrice = selectedVariant?.price || product.basePrice;
+  const isOutOfStock = !selectedVariant || selectedVariant.stock <= 0;
 
   return (
-    <section className="mx-auto max-w-7xl px-6 py-12">
-      <div className="mb-8">
-        <Link
-          to="/products"
-          className="text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900"
-        >
-          ← Quay lại sản phẩm
-        </Link>
-      </div>
+    <div className="min-h-screen bg-[#f7f7f6]">
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6 sm:pt-10 lg:px-8 lg:pb-28">
+        {/* Breadcrumb */}
+        <div className="mb-8">
+          <Link
+            to="/products"
+            className="group inline-flex items-center gap-2 text-sm font-medium text-neutral-500 transition-colors duration-200 hover:text-neutral-950"
+          >
+            <span className="transition-transform duration-200 group-hover:-translate-x-1">
+              ←
+            </span>
+            Quay lại sản phẩm
+          </Link>
+        </div>
 
-      <div className="grid gap-10 lg:grid-cols-2">
-        <div>
-          <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-100">
-            {currentImage ? (
-              <img
-                src={currentImage.imageUrl}
-                alt={product.name}
-                className="aspect-square h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex aspect-square items-center justify-center">
-                <span className="text-sm text-neutral-400">
-                  Chưa có hình ảnh
-                </span>
+        <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          {/* Gallery */}
+          <div className="min-w-0">
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-[0_15px_50px_rgba(0,0,0,0.05)]">
+              {currentImage ? (
+                <div className="motion-image">
+                  <img
+                    key={currentImage.id}
+                    src={currentImage.imageUrl}
+                    alt={product.name}
+                    className="aspect-square h-full w-full object-cover transition-all duration-500"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-square items-center justify-center bg-neutral-100">
+                  <div className="text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-neutral-400">
+                      Sneaker Store
+                    </p>
+
+                    <p className="mt-2 text-sm font-medium text-neutral-500">
+                      Chưa có hình ảnh
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="pointer-events-none absolute left-5 top-5 rounded-full border border-white/70 bg-white/90 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-700 backdrop-blur">
+                {product.brandName || "Brand"}
+              </div>
+            </div>
+
+            {images.length > 1 && (
+              <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
+                {images.map((image, index) => {
+                  const isActive = activeImageIndex === index;
+
+                  return (
+                    <button
+                      key={image.id}
+                      type="button"
+                      onClick={() => setActiveImageIndex(index)}
+                      className={`group relative overflow-hidden rounded-xl border bg-white transition-all duration-300 ${
+                        isActive
+                          ? "border-neutral-950 shadow-sm"
+                          : "border-neutral-200 hover:border-neutral-400"
+                      }`}
+                    >
+                      <img
+                        src={image.imageUrl}
+                        alt={`${product.name} ${index + 1}`}
+                        className={`aspect-square w-full object-cover transition-transform duration-300 ${
+                          isActive ? "scale-100" : "group-hover:scale-[1.04]"
+                        }`}
+                      />
+
+                      {isActive && (
+                        <span className="absolute inset-x-3 bottom-2 h-0.5 rounded-full bg-neutral-950" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {images.length > 1 && (
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {images.map((image, index) => (
-                <button
-                  key={image.id}
-                  type="button"
-                  onClick={() => setActiveImageIndex(index)}
-                  className={`overflow-hidden rounded-xl border-2 bg-neutral-100 transition-all duration-200 ${
-                    activeImageIndex === index
-                      ? "border-neutral-950"
-                      : "border-transparent hover:border-neutral-300"
-                  }`}
-                >
-                  <img
-                    src={image.imageUrl}
-                    alt={`${product.name} ${index + 1}`}
-                    className="aspect-square w-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Product information */}
+          <div className="lg:sticky lg:top-28">
+            <div className="border-b border-neutral-200 pb-7">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-neutral-400">
+                {product.categoryName || "Collection"}
+              </p>
 
-        <div className="flex flex-col">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
-            {product.brandName}
-          </p>
+              <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-tight tracking-[-0.04em] text-neutral-950 sm:text-5xl">
+                {product.name}
+              </h1>
 
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-neutral-950">
-            {product.name}
-          </h1>
+              <div className="mt-5 flex flex-wrap items-end gap-x-4 gap-y-2">
+                <p className="text-3xl font-semibold tracking-tight text-neutral-950">
+                  {formatPrice(currentPrice)} ₫
+                </p>
 
-          <p className="mt-4 text-3xl font-bold text-neutral-950">
-            {formatPrice(selectedVariant?.price || product.basePrice)} ₫
-          </p>
+                {selectedVariant && (
+                  <p className="pb-1 text-xs text-neutral-400">
+                    Variant #{selectedVariant.id}
+                  </p>
+                )}
+              </div>
 
-          <p className="mt-6 text-base leading-7 text-neutral-600">
-            {product.description}
-          </p>
-
-          <div className="my-8 h-px bg-neutral-200" />
-
-          <div>
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-neutral-900">
-                Chọn size
-              </h2>
-
-              {selectedVariant && (
-                <span className="text-sm text-neutral-500">
-                  Tồn kho: {selectedVariant.stock}
-                </span>
+              {product.description && (
+                <p className="mt-6 max-w-xl text-sm leading-7 text-neutral-600 sm:text-base">
+                  {product.description}
+                </p>
               )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-3">
-              {sizes.map((size) => {
-                const active = selectedSizeId === size.id;
-                const available = isSizeAvailable(size.id);
+            {/* Size */}
+            <div className="border-b border-neutral-200 py-7">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-neutral-950">
+                    Chọn size
+                  </p>
 
-                return (
-                  <button
-                    key={size.id}
-                    type="button"
-                    onClick={() => handleSizeChange(size.id)}
-                    className={`min-w-16 rounded-xl border px-4 py-3 text-sm font-semibold transition-all duration-200 ${
-                      active
-                        ? "border-neutral-950 bg-neutral-950 text-white"
-                        : available
-                          ? "border-neutral-300 bg-white text-neutral-900 hover:border-neutral-900"
-                          : "cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-300"
+                  <p className="mt-1 text-xs text-neutral-400">
+                    Kích thước có sẵn trong sản phẩm
+                  </p>
+                </div>
+
+                {selectedVariant && (
+                  <span
+                    className={`text-xs font-medium ${
+                      selectedVariant.stock > 0
+                        ? "text-neutral-500"
+                        : "text-neutral-400"
                     }`}
                   >
-                    {size.name}
-                  </button>
-                );
-              })}
+                    Tồn kho: {selectedVariant.stock}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                {sizes.map((size) => {
+                  const active = selectedSizeId === size.id;
+                  const available = isSizeAvailable(size.id);
+
+                  return (
+                    <button
+                      key={size.id}
+                      type="button"
+                      onClick={() => handleSizeChange(size.id)}
+                      disabled={!available}
+                      className={`min-w-[64px] rounded-xl border px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                        active
+                          ? "border-neutral-950 bg-neutral-950 text-white shadow-sm"
+                          : available
+                            ? "border-neutral-200 bg-white text-neutral-900 hover:-translate-y-0.5 hover:border-neutral-950 hover:shadow-sm"
+                            : "cursor-not-allowed border-neutral-100 bg-neutral-100 text-neutral-300"
+                      }`}
+                    >
+                      {size.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold text-neutral-900">Chọn màu</h2>
+            {/* Color */}
+            <div className="border-b border-neutral-200 py-7">
+              <div>
+                <p className="text-sm font-semibold text-neutral-950">
+                  Chọn màu
+                </p>
 
-            <div className="mt-4 flex flex-wrap gap-3">
-              {colors.map((color) => {
-                const active = selectedColorId === color.id;
-                const available = isColorAvailable(color.id);
+                <p className="mt-1 text-xs text-neutral-400">
+                  Màu sắc của variant được chọn
+                </p>
+              </div>
 
-                return (
-                  <button
-                    key={color.id}
-                    type="button"
-                    onClick={() => handleColorChange(color.id)}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                      active
-                        ? "border-neutral-950"
-                        : available
-                          ? "border-neutral-300 hover:border-neutral-900"
-                          : "cursor-not-allowed border-neutral-200 opacity-40"
-                    }`}
-                  >
-                    <span
-                      className="h-5 w-5 rounded-full border border-neutral-300"
-                      style={{
-                        backgroundColor: color.hexCode || "#FFFFFF",
-                      }}
-                    />
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                {colors.map((color) => {
+                  const active = selectedColorId === color.id;
+                  const available = isColorAvailable(color.id);
 
-                    {color.name}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={color.id}
+                      type="button"
+                      onClick={() => handleColorChange(color.id)}
+                      disabled={!available}
+                      className={`group flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                        active
+                          ? "border-neutral-950 bg-neutral-950 text-white"
+                          : available
+                            ? "border-neutral-200 bg-white text-neutral-900 hover:-translate-y-0.5 hover:border-neutral-950"
+                            : "cursor-not-allowed border-neutral-100 bg-neutral-100 text-neutral-300"
+                      }`}
+                    >
+                      <span
+                        className={`h-5 w-5 shrink-0 rounded-full border transition-transform duration-200 group-hover:scale-105 ${
+                          active ? "border-white/70" : "border-neutral-300"
+                        }`}
+                        style={{
+                          backgroundColor: color.hexCode || "#FFFFFF",
+                        }}
+                      />
+
+                      <span>{color.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-10">
-            {selectedVariant?.stock > 0 ? (
+            {/* Variant status */}
+            <div className="py-7">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white px-4 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                    Trạng thái
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-neutral-950">
+                    {selectedVariant
+                      ? selectedVariant.stock > 0
+                        ? "Sẵn sàng đặt hàng"
+                        : "Variant này đã hết hàng"
+                      : "Chưa chọn variant"}
+                  </p>
+                </div>
+
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    selectedVariant?.stock > 0
+                      ? "bg-neutral-950"
+                      : "bg-neutral-300"
+                  }`}
+                />
+              </div>
+
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={actionLoading}
-                className="w-full rounded-xl bg-neutral-950 px-6 py-4 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={actionLoading || isOutOfStock}
+                className={`mt-4 flex w-full items-center justify-between rounded-xl px-5 py-4 text-sm font-semibold transition-all duration-300 ${
+                  !isOutOfStock
+                    ? "bg-neutral-950 text-white hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lg active:translate-y-0"
+                    : "cursor-not-allowed bg-neutral-200 text-neutral-400"
+                }`}
               >
-                {actionLoading ? "Đang thêm vào giỏ..." : "Thêm vào giỏ hàng"}
+                <span>
+                  {actionLoading
+                    ? "Đang thêm vào giỏ..."
+                    : isOutOfStock
+                      ? "Hết hàng"
+                      : "Thêm vào giỏ hàng"}
+                </span>
+
+                {!isOutOfStock && !actionLoading && (
+                  <span className="transition-transform duration-300 hover:translate-x-1">
+                    →
+                  </span>
+                )}
               </button>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="w-full cursor-not-allowed rounded-xl bg-neutral-200 px-6 py-4 text-sm font-semibold text-neutral-400"
-              >
-                Hết hàng
-              </button>
-            )}
+
+              {cartError && (
+                <p className="mt-3 text-sm text-red-600">{cartError}</p>
+              )}
+
+              {!isAuthenticated && !isOutOfStock && (
+                <p className="mt-3 text-center text-xs text-neutral-400">
+                  Bạn sẽ được yêu cầu đăng nhập trước khi thêm sản phẩm vào giỏ.
+                </p>
+              )}
+            </div>
           </div>
-          {cartError && (
-            <p className="mt-3 text-sm text-red-600">{cartError}</p>
-          )}
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 

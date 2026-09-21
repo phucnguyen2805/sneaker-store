@@ -11,7 +11,8 @@
     sans-serif;
 
   color: #171717;
-  background: #f5f5f5;
+  background: #f7f7f6;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,13 +25,24 @@
 
 html {
   scroll-behavior: smooth;
+  background: #f7f7f6;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: radial-gradient(
+    circle at top,
+    rgba(255, 255, 255, 0.95),
+    rgba(247, 247, 246, 1) 45%
+  );
+  color: #171717;
+}
+
+body::selection {
+  background: #171717;
+  color: #ffffff;
 }
 
 button,
@@ -44,7 +56,124 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
 a {
   color: inherit;
   text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+textarea,
+select {
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a3a3a3;
+}
+
+/*
+==================================================
+GLOBAL SCROLLBAR
+==================================================
+*/
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d4d4d4;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+/*
+==================================================
+PAGE TRANSITION
+==================================================
+*/
+
+.page-transition {
+  animation: pageFadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  60% {
+    opacity: 0.85;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+==================================================
+REUSABLE MOTION
+==================================================
+*/
+
+.motion-soft {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    color 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.motion-lift:hover {
+  transform: translateY(-4px);
+}
+
+.motion-image {
+  overflow: hidden;
+}
+
+.motion-image img {
+  transition:
+    transform 0.5s ease,
+    opacity 0.4s ease;
+}
+
+.motion-image:hover img {
+  transform: scale(1.035);
+}
+
+/*
+==================================================
+FOCUS ACCESSIBILITY
+==================================================
+*/
+
+:focus-visible {
+  outline: 2px solid #171717;
+  outline-offset: 3px;
 }
