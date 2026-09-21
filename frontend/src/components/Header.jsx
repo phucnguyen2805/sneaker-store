@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -13,6 +13,8 @@ function Header() {
 
   const { cart } = useSelector((state) => state.cart);
 
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+
   useEffect(() => {
     if (isAuthenticated) {
       dispatch(fetchCart());
@@ -26,9 +28,17 @@ function Header() {
       isActive ? "text-neutral-950" : "text-neutral-500 hover:text-neutral-950"
     }`;
 
+  const getAdminLinkClass = ({ isActive }) =>
+    `block px-4 py-2.5 text-sm transition-colors duration-200 ${
+      isActive
+        ? "bg-neutral-100 font-semibold text-neutral-950"
+        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950"
+    }`;
+
   const handleLogout = () => {
     dispatch(logout());
     dispatch(resetCart());
+    setAdminMenuOpen(false);
     navigate("/");
   };
 
@@ -87,18 +97,47 @@ function Header() {
               </NavLink>
 
               {isAdmin && (
-                <NavLink
-                  to="/admin-test"
-                  className={({ isActive }) =>
-                    `text-sm font-semibold transition-colors duration-200 ${
-                      isActive
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAdminMenuOpen((current) => !current)}
+                    className={`text-sm font-semibold transition-colors duration-200 ${
+                      adminMenuOpen
                         ? "text-neutral-950"
                         : "text-neutral-500 hover:text-neutral-950"
-                    }`
-                  }
-                >
-                  Quản trị
-                </NavLink>
+                    }`}
+                  >
+                    Quản trị
+                  </button>
+
+                  {adminMenuOpen && (
+                    <div className="absolute right-0 top-10 w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                      <NavLink
+                        to="/admin"
+                        onClick={() => setAdminMenuOpen(false)}
+                        className={getAdminLinkClass}
+                      >
+                        Dashboard
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/products"
+                        onClick={() => setAdminMenuOpen(false)}
+                        className={getAdminLinkClass}
+                      >
+                        Sản phẩm
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/orders"
+                        onClick={() => setAdminMenuOpen(false)}
+                        className={getAdminLinkClass}
+                      >
+                        Đơn hàng
+                      </NavLink>
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="hidden h-6 w-px bg-neutral-200 sm:block" />

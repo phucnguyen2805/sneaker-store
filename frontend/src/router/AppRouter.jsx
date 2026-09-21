@@ -1,9 +1,11 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import Header from "../components/Header.jsx";
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
 
 import AboutPage from "../pages/AboutPage.jsx";
+import AdminProductPage from "../pages/AdminProductPage.jsx";
+import AdminOrderPage from "../pages/AdminOrderPage.jsx";
+import AdminVariantPage from "../pages/AdminVariantPage.jsx";
 import AdminTestPage from "../pages/AdminTestPage.jsx";
 import CartPage from "../pages/CartPage.jsx";
 import CheckoutPage from "../pages/CheckoutPage.jsx";
@@ -48,7 +50,21 @@ function AppRouter() {
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
-            <Route path="/admin-test" element={<AdminTestPage />} />
+            <Route path="/admin" element={<AdminTestPage />} />
+
+            <Route
+              path="/admin-test"
+              element={<Navigate to="/admin" replace />}
+            />
+
+            <Route path="/admin/products" element={<AdminProductPage />} />
+
+            <Route
+              path="/admin/products/:productId/variants"
+              element={<AdminVariantPage />}
+            />
+
+            <Route path="/admin/orders" element={<AdminOrderPage />} />
           </Route>
         </Route>
       </Routes>

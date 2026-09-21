@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
 
-import { login } from '../store/authSlice.js';
+import { login } from "../store/authSlice.js";
 
 function LoginPage() {
   const dispatch = useDispatch();
@@ -11,8 +11,8 @@ function LoginPage() {
   const { loading, error } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
 
   const handleChange = (event) => {
@@ -30,7 +30,15 @@ function LoginPage() {
     const result = await dispatch(login(formData));
 
     if (login.fulfilled.match(result)) {
-      navigate('/');
+      const user = result.payload?.user || {
+        role: result.payload?.role || "USER",
+      };
+
+      if (user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     }
   };
 
@@ -106,12 +114,12 @@ function LoginPage() {
               disabled={loading}
               className="w-full rounded-xl bg-neutral-950 px-5 py-3 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
 
           <div className="mt-6 border-t border-neutral-200 pt-6 text-center text-sm text-neutral-500">
-            Chưa có tài khoản?{' '}
+            Chưa có tài khoản?{" "}
             <Link
               to="/register"
               className="font-semibold text-neutral-900 transition-colors hover:text-neutral-600"
