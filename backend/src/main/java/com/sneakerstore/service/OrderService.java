@@ -1,5 +1,7 @@
 package com.sneakerstore.service;
 
+import com.sneakerstore.dto.AdminStatisticsResponse;
+import com.sneakerstore.dto.MonthlyRevenueResponse;
 import com.sneakerstore.dto.OrderItemResponse;
 import com.sneakerstore.dto.OrderResponse;
 import com.sneakerstore.entity.Cart;
@@ -12,7 +14,9 @@ import com.sneakerstore.entity.User;
 import com.sneakerstore.exception.ResourceNotFoundException;
 import com.sneakerstore.repository.CartItemRepository;
 import com.sneakerstore.repository.CartRepository;
+import com.sneakerstore.repository.OrderItemRepository;
 import com.sneakerstore.repository.OrderRepository;
+import com.sneakerstore.repository.ProductRepository;
 import com.sneakerstore.repository.ProductVariantRepository;
 import com.sneakerstore.repository.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -32,18 +36,25 @@ public class OrderService {
         private final CartItemRepository cartItemRepository;
         private final ProductVariantRepository productVariantRepository;
         private final UserRepository userRepository;
+        private final ProductRepository productRepository;
+        private final OrderItemRepository orderItemRepository;
 
         public OrderService(
                         OrderRepository orderRepository,
+                        OrderItemRepository orderItemRepository,
                         CartRepository cartRepository,
                         CartItemRepository cartItemRepository,
                         ProductVariantRepository productVariantRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        ProductRepository productRepository) {
+
                 this.orderRepository = orderRepository;
+                this.orderItemRepository = orderItemRepository;
                 this.cartRepository = cartRepository;
                 this.cartItemRepository = cartItemRepository;
                 this.productVariantRepository = productVariantRepository;
                 this.userRepository = userRepository;
+                this.productRepository = productRepository;
         }
 
         /**
@@ -481,5 +492,61 @@ public class OrderService {
                                 order.getCreatedAt(),
                                 order.getUpdatedAt(),
                                 itemResponses);
+        }
+
+        @Transactional(readOnly = true)
+        public List<OrderResponse> getOrdersForAdmin(OrderStatus status) {
+
+                /*
+                 * Nếu Admin không truyền status:
+                 * → lấy toàn bộ Order, mới nhất trước.
+                 *
+                 * Nếu có status:
+                 * → chỉ lấy những Order có đúng trạng thái đó.
+                 */
+                List<Order> orders;
+
+                if (status == null) {
+                        orders = orderRepository.findAllByOrderByCreatedAtDesc();
+                } else {
+                        orders = orderRepository.findByStatusOrderByCreatedAtDesc(status);
+                }
+
+                return orders.stream()
+                                .map(this::toOrderResponse)
+                                .toList();
+        }
+
+        @Transactional(readOnly = true)
+        public AdminStatisticsResponse getAdminStatistics() {
+
+                long totalProducts = productRepository.count();
+
+                long totalVariants = productVariantRepository.count();
+
+                long totalOrders = orderRepository.count();
+
+                long pendingOrders = orderRepository.countByStatus(OrderStatus.PENDING);
+
+                long confirmedOrders = orderRepository.countByStatus(OrderStatus.CONFIRMED);
+
+                long completedOrders = orderRepository.countByStatus(OrderStatus.COMPLETED);
+
+                long cancelledOrders = orderRepository.countByStatus(OrderStatus.CANCELLED);
+
+                BigDecimal totalRevenue = orderRepository.sumCompletedRevenue();
+
+                List<MonthlyRevenueResponse> monthlyRevenue = orderRepository.findMonthlyRevenue();
+
+                return new AdminStatisticsResponse(
+                                totalProducts,
+                                totalVariants,
+                                totalOrders,
+                                pendingOrders,
+                                confirmedOrders,
+                                completedOrders,
+                                cancelledOrders,
+                                totalRevenue,
+                                monthlyRevenue);
         }
 }

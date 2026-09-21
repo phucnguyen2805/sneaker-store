@@ -1,8 +1,12 @@
 package com.sneakerstore.repository;
 
 import com.sneakerstore.entity.Order;
+import com.sneakerstore.entity.OrderStatus;
+import com.sneakerstore.dto.MonthlyRevenueResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,4 +30,35 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByIdAndUserId(
             Long id,
             Long userId);
+
+    List<Order> findAllByOrderByCreatedAtDesc();
+
+    List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+
+    @Query("""
+            SELECT new com.sneakerstore.dto.MonthlyRevenueResponse(
+                YEAR(o.createdAt),
+                MONTH(o.createdAt),
+                COUNT(o.id),
+                SUM(o.totalAmount)
+            )
+            FROM Order o
+            WHERE o.status = com.sneakerstore.entity.OrderStatus.COMPLETED
+            GROUP BY
+                YEAR(o.createdAt),
+                MONTH(o.createdAt)
+            ORDER BY
+                YEAR(o.createdAt),
+                MONTH(o.createdAt)
+            """)
+    List<MonthlyRevenueResponse> findMonthlyRevenue();
+
+    long countByStatus(OrderStatus status);
+
+    @Query("""
+            SELECT COALESCE(SUM(o.totalAmount), 0)
+            FROM Order o
+            WHERE o.status = com.sneakerstore.entity.OrderStatus.COMPLETED
+            """)
+    BigDecimal sumCompletedRevenue();
 }
