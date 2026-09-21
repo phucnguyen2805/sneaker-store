@@ -1,20 +1,21 @@
 # ========================
-# Root
+# OS
 # ========================
 .DS_Store
 Thumbs.db
-*.log
+
+# ========================
+# Environment / Secrets
+# ========================
 .env
 .env.local
 .env.*.local
+*.env
 
 # ========================
 # Backend (Spring Boot)
 # ========================
 backend/target/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
 backend/.idea/
 backend/*.iml
 backend/.vscode/
@@ -25,6 +26,10 @@ backend/hs_err_pid*
 backend/.settings/
 backend/.project
 backend/.classpath
+
+# Local Spring configuration containing secrets
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-prod.properties
 
 # ========================
 # Frontend (React + Vite)
@@ -44,7 +49,7 @@ frontend/*.sln
 frontend/*.sw?
 
 # ========================
-# Logs & Temporary
+# Logs
 # ========================
 logs/
 *.log
