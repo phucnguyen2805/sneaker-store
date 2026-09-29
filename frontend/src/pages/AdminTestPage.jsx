@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../services/api.js";
 
+import { useThemeLanguage } from "../context/useThemeLanguage.js";
+import { translations } from "../i18n/translations.js";
+
 function AdminTestPage() {
+  const { language } = useThemeLanguage();
+  const t = translations[language];
+
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,7 +26,7 @@ function AdminTestPage() {
         const message =
           err?.response?.data?.message ||
           err?.response?.data?.error ||
-          "Không thể tải dữ liệu thống kê.";
+          t.adminDashboard.loadError;
 
         setError(message);
       } finally {
@@ -29,10 +35,12 @@ function AdminTestPage() {
     };
 
     loadStatistics();
-  }, []);
+  }, [language, t.adminDashboard.loadError]);
 
   const formatNumber = (value) => {
-    return Number(value || 0).toLocaleString("vi-VN");
+    return Number(value || 0).toLocaleString(
+      language === "en" ? "en-US" : "vi-VN",
+    );
   };
 
   const formatCurrency = (value) => {
@@ -84,17 +92,14 @@ function AdminTestPage() {
     ? statistics.monthlyRevenue
     : [];
 
-  const monthlyRevenueMax = useMemo(() => {
-    if (monthlyRevenue.length === 0) {
-      return 0;
-    }
-
-    return Math.max(
-      ...monthlyRevenue.map((item) =>
-        Number(getValue(item, ["revenue", "totalRevenue", "amount"])),
-      ),
-    );
-  }, [monthlyRevenue]);
+  const monthlyRevenueMax =
+    monthlyRevenue.length === 0
+      ? 0
+      : Math.max(
+          ...monthlyRevenue.map((item) =>
+            Number(getValue(item, ["revenue", "totalRevenue", "amount"])),
+          ),
+        );
 
   const totalStatusOrders =
     Number(pendingOrders || 0) +
@@ -112,52 +117,52 @@ function AdminTestPage() {
 
   const statCards = [
     {
-      label: "Tổng sản phẩm",
+      label: t.adminDashboard.stats.products,
       value: formatNumber(totalProducts),
-      description: "Mẫu sneaker hiện có",
+      description: t.adminDashboard.stats.productsDescription,
     },
     {
-      label: "Tổng variants",
+      label: t.adminDashboard.stats.variants,
       value: formatNumber(totalVariants),
-      description: "Size và màu sản phẩm",
+      description: t.adminDashboard.stats.variantsDescription,
     },
     {
-      label: "Tổng đơn hàng",
+      label: t.adminDashboard.stats.orders,
       value: formatNumber(totalOrders),
-      description: "Đơn hàng trong hệ thống",
+      description: t.adminDashboard.stats.ordersDescription,
     },
     {
-      label: "Doanh thu hoàn thành",
+      label: t.adminDashboard.stats.revenue,
       value: formatCurrency(completedRevenue),
-      description: "Từ các đơn đã hoàn thành",
+      description: t.adminDashboard.stats.revenueDescription,
       wide: true,
     },
   ];
 
   const statusItems = [
     {
-      label: "Chờ xác nhận",
+      label: t.adminDashboard.status.pending,
       value: pendingOrders,
       dot: "bg-amber-500",
       bar: "bg-amber-500",
       badge: "border-amber-200 bg-amber-50 text-amber-700",
     },
     {
-      label: "Đã xác nhận",
+      label: t.adminDashboard.status.confirmed,
       value: confirmedOrders,
       dot: "bg-blue-500",
       bar: "bg-blue-500",
       badge: "border-blue-200 bg-blue-50 text-blue-700",
     },
     {
-      label: "Hoàn thành",
+      label: t.adminDashboard.status.completed,
       value: completedOrders,
       dot: "bg-emerald-500",
       bar: "bg-emerald-500",
       badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
     },
     {
-      label: "Đã hủy",
+      label: t.adminDashboard.status.cancelled,
       value: cancelledOrders,
       dot: "bg-red-500",
       bar: "bg-red-500",
@@ -165,34 +170,49 @@ function AdminTestPage() {
     },
   ];
 
+  const formatMonth = (month) => {
+    if (language === "en") {
+      return `M${month}`;
+    }
+
+    return `T${month}`;
+  };
+
+  const formatMonthFull = (month) => {
+    if (language === "en") {
+      return `Month ${month}`;
+    }
+
+    return `Tháng ${month}`;
+  };
+
   return (
     <div className="min-h-screen bg-[#f7f7f6]">
       <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pt-12 lg:px-8 lg:pb-28">
         {/* Header */}
         <div className="border-b border-neutral-200 pb-8">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
-            Admin Dashboard
+            {t.adminDashboard.eyebrow}
           </p>
 
           <div className="mt-3 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">
-                Tổng quan hệ thống
+                {t.adminDashboard.title}
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-500 sm:text-base">
-                Theo dõi nhanh sản phẩm, variants, đơn hàng và doanh thu của
-                Sneaker Store.
+                {t.adminDashboard.description}
               </p>
             </div>
 
             <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
               <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
-                Access
+                {t.adminDashboard.accessLabel}
               </p>
 
               <p className="mt-1 text-sm font-semibold text-neutral-950">
-                Administrator
+                {t.adminDashboard.accessValue}
               </p>
             </div>
           </div>
@@ -208,7 +228,9 @@ function AdminTestPage() {
                   className="rounded-[1.5rem] border border-neutral-200 bg-white p-6"
                 >
                   <div className="h-3 w-24 animate-pulse rounded bg-neutral-100" />
+
                   <div className="mt-5 h-8 w-28 animate-pulse rounded bg-neutral-100" />
+
                   <div className="mt-3 h-3 w-36 animate-pulse rounded bg-neutral-100" />
                 </div>
               ))}
@@ -229,11 +251,11 @@ function AdminTestPage() {
           <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-red-200 bg-red-50">
             <div className="px-6 py-7 sm:px-8">
               <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-red-400">
-                Dashboard Error
+                {t.adminDashboard.errorEyebrow}
               </p>
 
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-red-700">
-                Không thể tải dashboard
+                {t.adminDashboard.errorTitle}
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-red-600">{error}</p>
@@ -282,17 +304,17 @@ function AdminTestPage() {
               <div className="overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.04)]">
                 <div className="border-b border-neutral-100 px-6 py-6 sm:px-7">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                    Revenue overview
+                    {t.adminDashboard.revenue.eyebrow}
                   </p>
 
                   <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <h2 className="text-xl font-semibold tracking-tight text-neutral-950">
-                        Doanh thu hoàn thành
+                        {t.adminDashboard.revenue.title}
                       </h2>
 
                       <p className="mt-2 text-sm text-neutral-500">
-                        Tổng doanh thu từ các đơn hàng đã hoàn thành.
+                        {t.adminDashboard.revenue.description}
                       </p>
                     </div>
 
@@ -305,7 +327,7 @@ function AdminTestPage() {
                 <div className="p-6 sm:p-7">
                   <div className="rounded-[1.25rem] bg-neutral-950 p-6 text-white">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-500">
-                      Current total
+                      {t.adminDashboard.revenue.currentTotal}
                     </p>
 
                     <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
@@ -313,15 +335,14 @@ function AdminTestPage() {
                     </p>
 
                     <p className="mt-3 max-w-md text-xs leading-5 text-neutral-400">
-                      Số liệu được lấy trực tiếp từ API thống kê dành cho tài
-                      khoản ADMIN.
+                      {t.adminDashboard.revenue.currentTotalDescription}
                     </p>
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
-                        Total orders
+                        {t.adminDashboard.revenue.totalOrders}
                       </p>
 
                       <p className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
@@ -331,7 +352,7 @@ function AdminTestPage() {
 
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
-                        Completed
+                        {t.adminDashboard.revenue.completed}
                       </p>
 
                       <p className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
@@ -346,11 +367,11 @@ function AdminTestPage() {
               <div className="overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.04)]">
                 <div className="border-b border-neutral-100 px-6 py-6">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                    Order status
+                    {t.adminDashboard.status.eyebrow}
                   </p>
 
                   <h2 className="mt-2 text-xl font-semibold tracking-tight text-neutral-950">
-                    Trạng thái đơn hàng
+                    {t.adminDashboard.status.title}
                   </h2>
                 </div>
 
@@ -359,7 +380,7 @@ function AdminTestPage() {
                     <div className="flex items-end justify-between gap-4">
                       <div>
                         <p className="text-xs text-neutral-400">
-                          Tổng trạng thái
+                          {t.adminDashboard.status.total}
                         </p>
 
                         <p className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">
@@ -367,7 +388,9 @@ function AdminTestPage() {
                         </p>
                       </div>
 
-                      <p className="text-xs text-neutral-400">đơn hàng</p>
+                      <p className="text-xs text-neutral-400">
+                        {t.adminDashboard.status.orders}
+                      </p>
                     </div>
                   </div>
 
@@ -421,17 +444,17 @@ function AdminTestPage() {
             <div className="overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.04)]">
               <div className="border-b border-neutral-100 px-6 py-6 sm:px-7">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                  Monthly Revenue
+                  {t.adminDashboard.monthly.eyebrow}
                 </p>
 
                 <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold tracking-tight text-neutral-950">
-                      Doanh thu theo tháng
+                      {t.adminDashboard.monthly.title}
                     </h2>
 
                     <p className="mt-2 text-sm text-neutral-500">
-                      Theo dõi doanh thu và số lượng đơn hàng theo từng tháng.
+                      {t.adminDashboard.monthly.description}
                     </p>
                   </div>
                 </div>
@@ -441,7 +464,7 @@ function AdminTestPage() {
                 <div className="p-6 sm:p-7">
                   <div className="rounded-xl bg-neutral-50 px-6 py-12 text-center">
                     <p className="text-sm text-neutral-500">
-                      Chưa có dữ liệu doanh thu theo tháng.
+                      {t.adminDashboard.monthly.empty}
                     </p>
                   </div>
                 </div>
@@ -491,7 +514,9 @@ function AdminTestPage() {
                                 }}
                                 title={`${formatCurrency(
                                   numericRevenue,
-                                )} · ${formatNumber(orderCount)} đơn`}
+                                )} · ${formatNumber(orderCount)} ${
+                                  t.adminDashboard.monthly.orderTooltip
+                                }`}
                               >
                                 <div className="absolute -top-8 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-neutral-950 px-2.5 py-1.5 text-[9px] font-medium text-white shadow-lg group-hover:block">
                                   {formatCurrency(numericRevenue)}
@@ -501,7 +526,7 @@ function AdminTestPage() {
 
                             <div className="text-center">
                               <p className="text-xs font-semibold text-neutral-700">
-                                T{month}
+                                {formatMonth(month)}
                               </p>
 
                               <p className="mt-0.5 text-[10px] text-neutral-400">
@@ -520,19 +545,19 @@ function AdminTestPage() {
                       <thead>
                         <tr className="border-b border-neutral-200 text-left">
                           <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400 sm:px-7">
-                            Năm
+                            {t.adminDashboard.monthly.year}
                           </th>
 
                           <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                            Tháng
+                            {t.adminDashboard.monthly.month}
                           </th>
 
                           <th className="px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                            Đơn hàng
+                            {t.adminDashboard.monthly.orders}
                           </th>
 
                           <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400 sm:px-7">
-                            Doanh thu
+                            {t.adminDashboard.monthly.revenue}
                           </th>
                         </tr>
                       </thead>
@@ -565,7 +590,7 @@ function AdminTestPage() {
                               </td>
 
                               <td className="px-6 py-4 text-sm font-medium text-neutral-800">
-                                Tháng {month}
+                                {formatMonthFull(month)}
                               </td>
 
                               <td className="px-6 py-4 text-sm text-neutral-600">

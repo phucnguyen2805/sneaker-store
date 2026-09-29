@@ -3,10 +3,12 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
 
 import AboutPage from "../pages/AboutPage.jsx";
-import AdminProductPage from "../pages/AdminProductPage.jsx";
+import AdminChatPage from "../pages/AdminChatPage.jsx";
 import AdminOrderPage from "../pages/AdminOrderPage.jsx";
-import AdminVariantPage from "../pages/AdminVariantPage.jsx";
+import AdminProductPage from "../pages/AdminProductPage.jsx";
 import AdminTestPage from "../pages/AdminTestPage.jsx";
+import AdminUserPage from "../pages/AdminUserPage.jsx";
+import AdminVariantPage from "../pages/AdminVariantPage.jsx";
 import CartPage from "../pages/CartPage.jsx";
 import CheckoutPage from "../pages/CheckoutPage.jsx";
 import HomePage from "../pages/HomePage.jsx";
@@ -57,6 +59,8 @@ function AppRouter() {
               element={<Navigate to="/admin" replace />}
             />
 
+            <Route path="/admin/chat" element={<AdminChatPage />} />
+
             <Route path="/admin/products" element={<AdminProductPage />} />
 
             <Route
@@ -65,6 +69,8 @@ function AppRouter() {
             />
 
             <Route path="/admin/orders" element={<AdminOrderPage />} />
+
+            <Route path="/admin/users" element={<AdminUserPage />} />
           </Route>
         </Route>
       </Routes>

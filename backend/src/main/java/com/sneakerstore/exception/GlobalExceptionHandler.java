@@ -8,6 +8,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -199,6 +200,45 @@ public class GlobalExceptionHandler {
 
                 return ResponseEntity
                                 .status(HttpStatus.BAD_REQUEST)
+                                .body(body);
+        }
+
+        /*
+        * =========================================================
+        * RESPONSE STATUS EXCEPTION
+        * =========================================================
+        *
+        * Dùng cho những business exception đã xác định
+        * HTTP status cụ thể.
+        *
+        * Ví dụ:
+        * ResponseStatusException(HttpStatus.BAD_REQUEST, ...)
+        *
+        * sẽ trả đúng HTTP 400 thay vì bị RuntimeException
+        * bắt thành HTTP 500.
+        */
+        @ExceptionHandler(ResponseStatusException.class)
+        public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+                        ResponseStatusException exception,
+                        HttpServletRequest request) {
+
+                Map<String, Object> body = new HashMap<>();
+
+                HttpStatus status = HttpStatus.valueOf(
+                                exception.getStatusCode().value());
+
+                body.put("timestamp", LocalDateTime.now());
+                body.put("status", status.value());
+                body.put("error", status.getReasonPhrase());
+                body.put(
+                                "message",
+                                exception.getReason() != null
+                                                ? exception.getReason()
+                                                : status.getReasonPhrase());
+                body.put("path", request.getRequestURI());
+
+                return ResponseEntity
+                                .status(status)
                                 .body(body);
         }
 

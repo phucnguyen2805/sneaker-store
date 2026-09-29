@@ -1,21 +1,54 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { getProductImages } from "../services/productDetailService.js";
+import CustomSelect from "../components/CustomSelect.jsx";
+
+import {
+  deleteProductImage,
+  getProductImages,
+  uploadProductImage,
+} from "../services/productImageService.js";
+
 import api from "../services/api.js";
 
+import { useThemeLanguage } from "../context/useThemeLanguage.js";
+import { translations } from "../i18n/translations.js";
+
+const sortImages = (images) => {
+  return [...images].sort((first, second) => {
+    if (first.primary && !second.primary) {
+      return -1;
+    }
+
+    if (!first.primary && second.primary) {
+      return 1;
+    }
+
+    return Number(first.displayOrder || 0) - Number(second.displayOrder || 0);
+  });
+};
+
 function AdminProductPage() {
+  const { language } = useThemeLanguage();
+  const t = translations[language];
+
   const [products, setProducts] = useState([]);
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
   const [productImages, setProductImages] = useState({});
+  const [editingImages, setEditingImages] = useState([]);
+  const [selectedImages, setSelectedImages] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+  const [editingImagesLoading, setEditingImagesLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const navigate = useNavigate();
 
   const [editingId, setEditingId] = useState(null);
 
@@ -27,46 +60,68 @@ function AdminProductPage() {
     categoryId: "",
   });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const fetchData = useCallback(async () => {
+    const [productsResponse, brandsResponse, categoriesResponse] =
+      await Promise.all([
+        api.get("/products"),
+        api.get("/brands"),
+        api.get("/categories"),
+      ]);
 
-      const [productsResponse, brandsResponse, categoriesResponse] =
-        await Promise.all([
-          api.get("/products"),
-          api.get("/brands"),
-          api.get("/categories"),
-        ]);
+    return {
+      products: Array.isArray(productsResponse.data)
+        ? productsResponse.data
+        : productsResponse.data?.content || [],
 
-      setProducts(
-        Array.isArray(productsResponse.data)
-          ? productsResponse.data
-          : productsResponse.data?.content || [],
-      );
+      brands: Array.isArray(brandsResponse.data) ? brandsResponse.data : [],
 
-      setBrands(Array.isArray(brandsResponse.data) ? brandsResponse.data : []);
-
-      setCategories(
-        Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [],
-      );
-    } catch (err) {
-      console.error("Không thể tải dữ liệu Product:", err);
-
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Không thể tải dữ liệu sản phẩm.";
-
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      categories: Array.isArray(categoriesResponse.data)
+        ? categoriesResponse.data
+        : [],
+    };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await fetchData();
+
+        if (cancelled) {
+          return;
+        }
+
+        setProducts(data.products);
+        setBrands(data.brands);
+        setCategories(data.categories);
+      } catch (err) {
+        console.error("Không thể tải dữ liệu Product:", err);
+
+        const message =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          translations[language].adminProducts.loadError;
+
+        if (!cancelled) {
+          setError(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchData, language]);
 
   useEffect(() => {
     let active = true;
@@ -141,6 +196,140 @@ function AdminProductPage() {
     };
   }, [products]);
 
+  const loadImagesForEditor = useCallback(
+    async (productId) => {
+      try {
+        setEditingImagesLoading(true);
+
+        const imageData = await getProductImages(productId);
+        const images = Array.isArray(imageData) ? sortImages(imageData) : [];
+
+        setEditingImages(images);
+
+        setProductImages((current) => ({
+          ...current,
+          [productId]: images[0]?.imageUrl || "",
+        }));
+
+        return images;
+      } catch (err) {
+        console.error("Không thể tải hình ảnh sản phẩm:", err);
+
+        const message =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          t.adminProducts.imageLoadError;
+
+        setError(message);
+
+        return [];
+      } finally {
+        setEditingImagesLoading(false);
+      }
+    },
+    [t.adminProducts.imageLoadError],
+  );
+
+  const readFileAsDataUrl = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error(t.adminProducts.fileReadError));
+
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelection = async (event) => {
+    const files = Array.from(event.target.files || []);
+
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    const availableSlots = 8 - selectedImages.length;
+
+    if (availableSlots <= 0) {
+      setError(t.adminProducts.maxImagesSelection);
+      return;
+    }
+
+    const selectedFiles = files.slice(0, availableSlots);
+
+    const invalidFiles = selectedFiles.filter(
+      (file) => !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024,
+    );
+
+    if (invalidFiles.length > 0) {
+      setError(t.adminProducts.invalidImage);
+    }
+
+    const validFiles = selectedFiles.filter(
+      (file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024,
+    );
+
+    if (validFiles.length === 0) {
+      return;
+    }
+
+    try {
+      const previews = await Promise.all(
+        validFiles.map(async (file) => ({
+          file,
+          previewUrl: await readFileAsDataUrl(file),
+        })),
+      );
+
+      setSelectedImages((current) => [...current, ...previews]);
+    } catch (err) {
+      console.error("Không thể tạo preview ảnh:", err);
+      setError(t.adminProducts.previewError);
+    }
+  };
+
+  const removeSelectedImage = (index) => {
+    setSelectedImages((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
+  };
+
+  const handleDeleteImage = async (image) => {
+    if (!editingId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${t.adminProducts.confirmDeleteImage} #${editingId}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+
+    try {
+      await deleteProductImage(editingId, image.id);
+
+      await loadImagesForEditor(editingId);
+
+      setSuccess(t.adminProducts.imageDeleteSuccess);
+    } catch (err) {
+      console.error("Không thể xóa hình ảnh:", err);
+
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        t.adminProducts.imageDeleteError;
+
+      setError(message);
+    }
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -150,8 +339,24 @@ function AdminProductPage() {
     }));
   };
 
+  const handleBrandChange = (value) => {
+    setForm((current) => ({
+      ...current,
+      brandId: value,
+    }));
+  };
+
+  const handleCategoryChange = (value) => {
+    setForm((current) => ({
+      ...current,
+      categoryId: value,
+    }));
+  };
+
   const resetForm = () => {
     setEditingId(null);
+    setEditingImages([]);
+    setSelectedImages([]);
 
     setForm({
       name: "",
@@ -175,6 +380,9 @@ function AdminProductPage() {
 
     setSuccess("");
     setError("");
+    setSelectedImages([]);
+
+    void loadImagesForEditor(product.id);
 
     window.scrollTo({
       top: 0,
@@ -189,22 +397,22 @@ function AdminProductPage() {
     setSuccess("");
 
     if (!form.name.trim()) {
-      setError("Tên sản phẩm không được để trống.");
+      setError(t.adminProducts.validation.nameRequired);
       return;
     }
 
     if (form.basePrice === "" || Number(form.basePrice) < 0) {
-      setError("Giá cơ bản phải lớn hơn hoặc bằng 0.");
+      setError(t.adminProducts.validation.priceInvalid);
       return;
     }
 
     if (!form.brandId) {
-      setError("Vui lòng chọn Brand.");
+      setError(t.adminProducts.validation.brandRequired);
       return;
     }
 
     if (!form.categoryId) {
-      setError("Vui lòng chọn Category.");
+      setError(t.adminProducts.validation.categoryRequired);
       return;
     }
 
@@ -216,39 +424,118 @@ function AdminProductPage() {
       categoryId: Number(form.categoryId),
     };
 
+    const filesToUpload = [...selectedImages];
+
     try {
       setSaving(true);
 
+      let savedProductId = editingId;
+      let createdProduct = null;
+
       if (editingId) {
         await api.put(`/products/${editingId}`, payload);
-
-        setSuccess("Cập nhật sản phẩm thành công.");
       } else {
-        await api.post("/products", payload);
+        const response = await api.post("/products", payload);
 
-        setSuccess("Thêm sản phẩm thành công.");
+        createdProduct = response.data;
+        savedProductId = response.data?.id;
       }
 
-      resetForm();
+      if (!savedProductId) {
+        throw new Error(t.adminProducts.saveIdError);
+      }
 
-      await loadData();
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      if (filesToUpload.length > 0) {
+        setImageUploading(true);
+
+        for (const item of filesToUpload) {
+          try {
+            await uploadProductImage(savedProductId, item.file);
+            uploadedCount += 1;
+          } catch (err) {
+            failedCount += 1;
+
+            console.error(
+              `Không thể tải ảnh lên cho sản phẩm #${savedProductId}:`,
+              err,
+            );
+          }
+        }
+
+        setImageUploading(false);
+      }
+
+      const data = await fetchData();
+
+      setProducts(data.products);
+      setBrands(data.brands);
+      setCategories(data.categories);
+
+      setEditingId(savedProductId);
+      setSelectedImages([]);
+
+      if (createdProduct) {
+        setForm({
+          name: createdProduct.name || payload.name,
+          description: createdProduct.description ?? payload.description,
+          basePrice: createdProduct.basePrice ?? payload.basePrice,
+          brandId: createdProduct.brandId ?? payload.brandId,
+          categoryId: createdProduct.categoryId ?? payload.categoryId,
+        });
+      }
+
+      await loadImagesForEditor(savedProductId);
+
+      if (failedCount > 0) {
+        setError(
+          t.adminProducts.savePartialError
+            .replace("{uploaded}", uploadedCount)
+            .replace("{total}", filesToUpload.length)
+            .replace("{failed}", failedCount),
+        );
+
+        setSuccess("");
+      } else if (filesToUpload.length > 0) {
+        setSuccess(
+          editingId
+            ? t.adminProducts.updateSuccessWithImages.replace(
+                "{count}",
+                uploadedCount,
+              )
+            : t.adminProducts.createSuccessWithImages.replace(
+                "{count}",
+                uploadedCount,
+              ),
+        );
+      } else {
+        setSuccess(
+          editingId
+            ? t.adminProducts.updateSuccess
+            : t.adminProducts.createSuccess,
+        );
+      }
     } catch (err) {
       console.error("Không thể lưu sản phẩm:", err);
 
       const message =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
-        "Không thể lưu sản phẩm.";
+        err?.message ||
+        t.adminProducts.saveError;
 
       setError(message);
     } finally {
+      setImageUploading(false);
       setSaving(false);
     }
   };
 
   const handleDelete = async (product) => {
     const confirmed = window.confirm(
-      `Bạn có chắc muốn xóa sản phẩm "${product.name}"?`,
+      `${t.adminProducts.confirmDeleteProduct} "${product.name}"?`,
     );
 
     if (!confirmed) {
@@ -261,28 +548,56 @@ function AdminProductPage() {
     try {
       await api.delete(`/products/${product.id}`);
 
-      setSuccess(`Đã xóa sản phẩm "${product.name}".`);
+      setSuccess(t.adminProducts.deleteSuccess.replace("{name}", product.name));
 
       if (editingId === product.id) {
         resetForm();
       }
 
-      await loadData();
+      const data = await fetchData();
+
+      setProducts(data.products);
+      setBrands(data.brands);
+      setCategories(data.categories);
     } catch (err) {
       console.error("Không thể xóa sản phẩm:", err);
 
       const message =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
-        "Không thể xóa sản phẩm.";
+        t.adminProducts.deleteError;
 
       setError(message);
     }
   };
 
   const formatPrice = (price) => {
-    return `${Number(price || 0).toLocaleString("vi-VN")} ₫`;
+    return `${Number(price || 0).toLocaleString(
+      language === "en" ? "en-US" : "vi-VN",
+    )} ₫`;
   };
+
+  const brandOptions = [
+    {
+      value: "",
+      label: t.adminProducts.form.selectBrand,
+    },
+    ...brands.map((brand) => ({
+      value: String(brand.id),
+      label: brand.name,
+    })),
+  ];
+
+  const categoryOptions = [
+    {
+      value: "",
+      label: t.adminProducts.form.selectCategory,
+    },
+    ...categories.map((category) => ({
+      value: String(category.id),
+      label: category.name,
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#f7f7f6]">
@@ -292,25 +607,25 @@ function AdminProductPage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
-                Admin Products
+                {t.adminProducts.eyebrow}
               </p>
 
               <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">
-                Quản lý sản phẩm
+                {t.adminProducts.title}
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-500 sm:text-base">
-                Thêm, chỉnh sửa và xóa sản phẩm sneaker trong hệ thống.
+                {t.adminProducts.description}
               </p>
             </div>
 
             <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
               <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
-                Products
+                {t.adminProducts.productsLabel}
               </p>
 
               <p className="mt-1 text-sm font-semibold text-neutral-950">
-                {products.length} sản phẩm
+                {products.length} {t.adminProducts.productCount}
               </p>
             </div>
           </div>
@@ -343,13 +658,15 @@ function AdminProductPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                  {editingId ? "Edit Product" : "New Product"}
+                  {editingId
+                    ? t.adminProducts.form.editEyebrow
+                    : t.adminProducts.form.newEyebrow}
                 </p>
 
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950">
                   {editingId
-                    ? `Đang sửa sản phẩm #${editingId}`
-                    : "Tạo sản phẩm mới"}
+                    ? `${t.adminProducts.form.editTitle} #${editingId}`
+                    : t.adminProducts.form.createTitle}
                 </h2>
               </div>
 
@@ -359,7 +676,7 @@ function AdminProductPage() {
                   onClick={resetForm}
                   className="self-start rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-950 hover:text-neutral-950"
                 >
-                  Hủy chỉnh sửa
+                  {t.adminProducts.form.cancelEdit}
                 </button>
               )}
             </div>
@@ -375,7 +692,7 @@ function AdminProductPage() {
                 htmlFor="name"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Tên sản phẩm
+                {t.adminProducts.form.name}
               </label>
 
               <input
@@ -385,7 +702,7 @@ function AdminProductPage() {
                 value={form.name}
                 onChange={handleChange}
                 maxLength={200}
-                placeholder="Ví dụ: Nike Air Force 1"
+                placeholder={t.adminProducts.form.namePlaceholder}
                 className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 placeholder:text-neutral-400 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100"
               />
             </div>
@@ -396,7 +713,7 @@ function AdminProductPage() {
                 htmlFor="description"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Mô tả
+                {t.adminProducts.form.description}
               </label>
 
               <textarea
@@ -405,7 +722,7 @@ function AdminProductPage() {
                 value={form.description}
                 onChange={handleChange}
                 rows={4}
-                placeholder="Mô tả sản phẩm..."
+                placeholder={t.adminProducts.form.descriptionPlaceholder}
                 className="w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 placeholder:text-neutral-400 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100"
               />
             </div>
@@ -416,7 +733,7 @@ function AdminProductPage() {
                 htmlFor="basePrice"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Giá cơ bản
+                {t.adminProducts.form.basePrice}
               </label>
 
               <input
@@ -433,55 +750,196 @@ function AdminProductPage() {
             </div>
 
             {/* Brand */}
-            <div>
+            <div className="relative">
               <label
                 htmlFor="brandId"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Brand
+                {t.adminProducts.form.brand}
               </label>
 
-              <select
-                id="brandId"
-                name="brandId"
-                value={form.brandId}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100"
-              >
-                <option value="">-- Chọn Brand --</option>
-
-                {brands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                value={String(form.brandId ?? "")}
+                onChange={handleBrandChange}
+                options={brandOptions}
+                placeholder={
+                  language === "en" ? "Select brand" : "Chọn thương hiệu"
+                }
+              />
             </div>
 
             {/* Category */}
-            <div>
+            <div className="relative">
               <label
                 htmlFor="categoryId"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Category
+                {t.adminProducts.form.category}
               </label>
 
-              <select
-                id="categoryId"
-                name="categoryId"
-                value={form.categoryId}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100"
-              >
-                <option value="">-- Chọn Category --</option>
+              <CustomSelect
+                value={String(form.categoryId ?? "")}
+                onChange={handleCategoryChange}
+                options={categoryOptions}
+                placeholder={
+                  language === "en" ? "Select category" : "Chọn danh mục"
+                }
+              />
+            </div>
 
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+            {/* Product Images */}
+            <div className="md:col-span-2">
+              <div className="rounded-[1.25rem] border border-neutral-200 bg-neutral-50/70 p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
+                      {t.adminProducts.images.eyebrow}
+                    </p>
+
+                    <h3 className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
+                      {t.adminProducts.images.title}
+                    </h3>
+
+                    <p className="mt-2 max-w-2xl text-xs leading-6 text-neutral-500">
+                      {t.adminProducts.images.description}
+                    </p>
+                  </div>
+
+                  <label
+                    htmlFor="productImages"
+                    className={`inline-flex cursor-pointer items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-950 hover:text-neutral-950 ${
+                      saving || imageUploading
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }`}
+                  >
+                    {t.adminProducts.images.choose}
+                  </label>
+
+                  <input
+                    id="productImages"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={saving || imageUploading}
+                    onChange={handleImageSelection}
+                    className="sr-only"
+                  />
+                </div>
+
+                {editingId && (
+                  <div className="mt-6">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                        {t.adminProducts.images.uploaded}
+                      </p>
+
+                      {editingImagesLoading && (
+                        <p className="text-[11px] text-neutral-400">
+                          {t.adminProducts.images.loading}
+                        </p>
+                      )}
+                    </div>
+
+                    {editingImages.length === 0 && !editingImagesLoading ? (
+                      <div className="rounded-xl border border-dashed border-neutral-300 bg-white px-5 py-8 text-center">
+                        <p className="text-sm text-neutral-500">
+                          {t.adminProducts.images.noImages}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        {editingImages.map((image) => (
+                          <div
+                            key={image.id}
+                            className="overflow-hidden rounded-xl border border-neutral-200 bg-white"
+                          >
+                            <div className="aspect-square bg-neutral-100">
+                              <img
+                                src={image.imageUrl}
+                                alt={`${form.name || t.adminProducts.defaultProduct} - ${t.adminProducts.images.image} ${image.id}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+
+                            <div className="space-y-2 p-2.5">
+                              {image.primary && (
+                                <span className="inline-flex rounded-full bg-neutral-950 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-white">
+                                  {t.adminProducts.images.primary}
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteImage(image)}
+                                disabled={saving || imageUploading}
+                                className="w-full rounded-lg border border-red-200 bg-white px-2.5 py-2 text-[10px] font-semibold text-red-600 transition-all duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {t.adminProducts.images.delete}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedImages.length > 0 && (
+                  <div className="mt-6">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                          {t.adminProducts.images.pending}
+                        </p>
+
+                        <p className="mt-1 text-[11px] text-neutral-400">
+                          {selectedImages.length}{" "}
+                          {t.adminProducts.images.selected}
+                        </p>
+                      </div>
+
+                      {imageUploading && (
+                        <p className="text-xs font-medium text-neutral-500">
+                          {t.adminProducts.images.uploading}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                      {selectedImages.map((item, index) => (
+                        <div
+                          key={`${item.file.name}-${item.file.lastModified}-${index}`}
+                          className="overflow-hidden rounded-xl border border-neutral-200 bg-white"
+                        >
+                          <div className="aspect-square bg-neutral-100">
+                            <img
+                              src={item.previewUrl}
+                              alt={`${t.adminProducts.images.preview} ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+
+                          <div className="p-2.5">
+                            <p className="truncate text-[10px] font-medium text-neutral-700">
+                              {item.file.name}
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedImage(index)}
+                              disabled={saving || imageUploading}
+                              className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-2.5 py-2 text-[10px] font-semibold text-neutral-600 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {t.adminProducts.images.remove}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Submit */}
@@ -493,10 +951,12 @@ function AdminProductPage() {
               >
                 <span>
                   {saving
-                    ? "Đang lưu..."
+                    ? imageUploading
+                      ? t.adminProducts.form.savingWithImages
+                      : t.adminProducts.form.saving
                     : editingId
-                      ? "Cập nhật sản phẩm"
-                      : "Thêm sản phẩm"}
+                      ? t.adminProducts.form.update
+                      : t.adminProducts.form.create}
                 </span>
 
                 {!saving && (
@@ -515,23 +975,23 @@ function AdminProductPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                  Product List
+                  {t.adminProducts.list.eyebrow}
                 </p>
 
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950">
-                  Danh sách sản phẩm
+                  {t.adminProducts.list.title}
                 </h2>
               </div>
 
               <div className="flex items-center gap-4">
                 {imageLoading && (
                   <p className="text-xs text-neutral-400">
-                    Đang tải hình ảnh...
+                    {t.adminProducts.images.loading}
                   </p>
                 )}
 
                 <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-700">
-                  {products.length} sản phẩm
+                  {products.length} {t.adminProducts.productCount}
                 </span>
               </div>
             </div>
@@ -548,7 +1008,9 @@ function AdminProductPage() {
 
                   <div className="space-y-3 p-5">
                     <div className="h-3 w-20 animate-pulse rounded bg-neutral-100" />
+
                     <div className="h-5 w-4/5 animate-pulse rounded bg-neutral-100" />
+
                     <div className="h-3 w-28 animate-pulse rounded bg-neutral-100" />
                   </div>
                 </div>
@@ -556,7 +1018,9 @@ function AdminProductPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="px-6 py-16 text-center">
-              <p className="text-sm text-neutral-500">Chưa có sản phẩm nào.</p>
+              <p className="text-sm text-neutral-500">
+                {t.adminProducts.list.empty}
+              </p>
             </div>
           ) : (
             <>
@@ -566,27 +1030,27 @@ function AdminProductPage() {
                   <thead>
                     <tr className="border-b border-neutral-200 bg-neutral-50">
                       <th className="w-20 px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        ID
+                        {t.adminProducts.list.id}
                       </th>
 
                       <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        Sản phẩm
+                        {t.adminProducts.list.product}
                       </th>
 
                       <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        Brand
+                        {t.adminProducts.list.brand}
                       </th>
 
                       <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        Category
+                        {t.adminProducts.list.category}
                       </th>
 
                       <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        Giá
+                        {t.adminProducts.list.price}
                       </th>
 
                       <th className="px-5 py-4 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
-                        Thao tác
+                        {t.adminProducts.list.actions}
                       </th>
                     </tr>
                   </thead>
@@ -626,7 +1090,8 @@ function AdminProductPage() {
                                 </p>
 
                                 <p className="mt-1 max-w-md truncate text-xs text-neutral-400">
-                                  {product.description || "Không có mô tả"}
+                                  {product.description ||
+                                    t.adminProducts.list.noDescription}
                                 </p>
                               </div>
                             </div>
@@ -644,29 +1109,29 @@ function AdminProductPage() {
                             {formatPrice(product.basePrice)}
                           </td>
 
-                          <td className="px-5 py-5">
-                            <div className="flex justify-end gap-2">
+                          <td className="px-5 py-5 align-middle">
+                            <div className="flex items-center justify-end gap-2">
                               <Link
                                 to={`/admin/products/${product.id}/variants`}
-                                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950"
+                                className="inline-flex h-12 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950"
                               >
-                                Variants
+                                {t.adminProducts.list.variants}
                               </Link>
 
                               <button
                                 type="button"
                                 onClick={() => startEdit(product)}
-                                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
+                                className="inline-flex h-12 items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
                               >
-                                Sửa
+                                {t.adminProducts.list.edit}
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleDelete(product)}
-                                className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50"
+                                className="inline-flex h-12 items-center justify-center rounded-lg border border-red-200 bg-white px-4 text-xs font-semibold text-red-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50"
                               >
-                                Xóa
+                                {t.adminProducts.list.delete}
                               </button>
                             </div>
                           </td>
@@ -728,27 +1193,30 @@ function AdminProductPage() {
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 border-t border-neutral-100 p-4">
-                        <Link
-                          to={`/admin/products/${product.id}/variants`}
-                          className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-center text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/admin/products/${product.id}/variants`)
+                          }
+                          className="block w-full rounded-lg border border-neutral-200 bg-white py-2 text-center text-xs font-semibold leading-none text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950"
                         >
-                          Variants
-                        </Link>
+                          {t.adminProducts.list.variants}
+                        </button>
 
                         <button
                           type="button"
                           onClick={() => startEdit(product)}
-                          className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
+                          className="block w-full rounded-lg border border-neutral-200 bg-white py-2 text-center text-xs font-semibold leading-none text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:bg-neutral-950 hover:text-white"
                         >
-                          Sửa
+                          {t.adminProducts.list.edit}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleDelete(product)}
-                          className="rounded-lg border border-red-200 bg-white px-3 py-2.5 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-50"
+                          className="block w-full rounded-lg border border-red-200 bg-white py-2 text-center text-xs font-semibold leading-none text-red-600 transition-all duration-200 hover:bg-red-50"
                         >
-                          Xóa
+                          {t.adminProducts.list.delete}
                         </button>
                       </div>
                     </article>

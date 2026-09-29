@@ -146,17 +146,31 @@ function ProductDetailPage() {
   const handleSizeChange = (sizeId) => {
     setSelectedSizeId(sizeId);
 
-    // Ưu tiên giữ nguyên màu hiện tại nếu tồn tại variant tương ứng.
-    const matchingVariant = variants.find(
+    // Ưu tiên giữ màu hiện tại nếu variant tương ứng đang còn hàng.
+    const availableMatchingVariant = variants.find(
       (variant) =>
-        variant.sizeId === sizeId && variant.colorId === selectedColorId,
+        variant.sizeId === sizeId &&
+        variant.colorId === selectedColorId &&
+        variant.stock > 0,
     );
 
-    if (matchingVariant) {
+    if (availableMatchingVariant) {
       return;
     }
 
-    // Nếu không tồn tại, chọn màu đầu tiên có variant với size mới.
+    // Nếu màu hiện tại hết hàng hoặc không tồn tại,
+    // tìm variant còn hàng đầu tiên của size mới.
+    const firstAvailableVariantForSize = variants.find(
+      (variant) => variant.sizeId === sizeId && variant.stock > 0,
+    );
+
+    if (firstAvailableVariantForSize) {
+      setSelectedColorId(firstAvailableVariantForSize.colorId);
+      return;
+    }
+
+    // Nếu size này không còn variant nào có hàng,
+    // vẫn chọn variant đầu tiên để hiển thị trạng thái hết hàng.
     const firstVariantForSize = variants.find(
       (variant) => variant.sizeId === sizeId,
     );
@@ -169,17 +183,31 @@ function ProductDetailPage() {
   const handleColorChange = (colorId) => {
     setSelectedColorId(colorId);
 
-    // Ưu tiên giữ nguyên size hiện tại nếu tồn tại variant tương ứng.
-    const matchingVariant = variants.find(
+    // Ưu tiên giữ size hiện tại nếu variant tương ứng đang còn hàng.
+    const availableMatchingVariant = variants.find(
       (variant) =>
-        variant.sizeId === selectedSizeId && variant.colorId === colorId,
+        variant.sizeId === selectedSizeId &&
+        variant.colorId === colorId &&
+        variant.stock > 0,
     );
 
-    if (matchingVariant) {
+    if (availableMatchingVariant) {
       return;
     }
 
-    // Nếu không tồn tại, chọn size đầu tiên có variant với màu mới.
+    // Nếu size hiện tại hết hàng hoặc không tồn tại,
+    // tìm variant còn hàng đầu tiên của màu mới.
+    const firstAvailableVariantForColor = variants.find(
+      (variant) => variant.colorId === colorId && variant.stock > 0,
+    );
+
+    if (firstAvailableVariantForColor) {
+      setSelectedSizeId(firstAvailableVariantForColor.sizeId);
+      return;
+    }
+
+    // Nếu màu này không còn variant nào có hàng,
+    // vẫn chọn variant đầu tiên để hiển thị trạng thái hết hàng.
     const firstVariantForColor = variants.find(
       (variant) => variant.colorId === colorId,
     );
@@ -191,6 +219,27 @@ function ProductDetailPage() {
 
   const formatPrice = (price) => {
     return Number(price || 0).toLocaleString("vi-VN");
+  };
+
+  const handleAskShop = () => {
+    if (!isAuthenticated) {
+      navigate("/login", {
+        state: {
+          from: `/products/${id}`,
+        },
+      });
+
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("open-chat-with-product", {
+        detail: {
+          productId: Number(id),
+          note: "Cho mình hỏi sản phẩm này còn hàng không?",
+        },
+      }),
+    );
   };
 
   const handleAddToCart = async () => {
@@ -544,6 +593,17 @@ function ProductDetailPage() {
                     →
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAskShop}
+                className="mt-3 flex w-full items-center justify-between rounded-xl border border-neutral-300 bg-white px-5 py-4 text-sm font-semibold text-neutral-900 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-50 active:translate-y-0"
+              >
+                <span>Hỏi Shop về sản phẩm này</span>
+                <span className="transition-transform duration-300 hover:translate-x-1">
+                  →
+                </span>
               </button>
 
               {cartError && (

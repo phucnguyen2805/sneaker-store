@@ -1,7 +1,12 @@
-import AppRouter from './router/AppRouter.jsx';
+import AppRouter from "./router/AppRouter.jsx";
+import ThemeLanguageProvider from "./context/ThemeLanguageContext.jsx";
 
 function App() {
-  return <AppRouter />;
+  return (
+    <ThemeLanguageProvider>
+      <AppRouter />
+    </ThemeLanguageProvider>
+  );
 }
 
 export default App;

@@ -1,4 +1,4 @@
-import api from './api.js';
+import api from "./api.js";
 
 export const getProductById = async (productId) => {
   const response = await api.get(`/products/${productId}`);
@@ -14,6 +14,12 @@ export const getProductVariants = async (productId) => {
 
 export const getProductImages = async (productId) => {
   const response = await api.get(`/products/${productId}/images`);
+
+  return response.data;
+};
+
+export const getProductVariantById = async (variantId) => {
+  const response = await api.get(`/variants/${variantId}`);
 
   return response.data;
 };

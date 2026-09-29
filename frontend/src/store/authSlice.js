@@ -1,43 +1,59 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-import api from '../services/api.js';
+import api from "../services/api.js";
 
-const savedToken = localStorage.getItem('accessToken');
-const savedUser = localStorage.getItem('user');
+const savedToken = localStorage.getItem("accessToken");
+const savedUser = localStorage.getItem("user");
+
+const parseSavedUser = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    console.warn("Thông tin user trong localStorage không hợp lệ:", error);
+
+    localStorage.removeItem("user");
+
+    return null;
+  }
+};
 
 const initialState = {
   token: savedToken || null,
-  user: savedUser ? JSON.parse(savedUser) : null,
+  user: parseSavedUser(savedUser),
   isAuthenticated: Boolean(savedToken),
   loading: false,
   error: null,
 };
 
 export const register = createAsyncThunk(
-  'auth/register',
+  "auth/register",
   async (registerData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/register', registerData);
+      const response = await api.post("/auth/register", registerData);
 
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Đăng ký thất bại.',
+        error.response?.data?.message || "Đăng ký thất bại.",
       );
     }
   },
 );
 
 export const login = createAsyncThunk(
-  'auth/login',
+  "auth/login",
   async (loginData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login', loginData);
+      const response = await api.post("/auth/login", loginData);
 
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Đăng nhập thất bại.',
+        error.response?.data?.message || "Đăng nhập thất bại.",
       );
     }
   },
@@ -48,16 +64,18 @@ const getTokenFromResponse = (data) => {
 };
 
 const getUserFromResponse = (data) => {
-  return data?.user || {
-    id: data?.id || data?.userId || null,
-    fullName: data?.fullName || '',
-    email: data?.email || '',
-    role: data?.role || 'USER',
-  };
+  return (
+    data?.user || {
+      id: data?.id || data?.userId || null,
+      fullName: data?.fullName || "",
+      email: data?.email || "",
+      role: data?.role || "USER",
+    }
+  );
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     logout: (state) => {
@@ -66,8 +84,8 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
 
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
     },
 
     clearAuthError: (state) => {
@@ -109,10 +127,10 @@ const authSlice = createSlice({
         state.isAuthenticated = Boolean(token);
 
         if (token) {
-          localStorage.setItem('accessToken', token);
+          localStorage.setItem("accessToken", token);
         }
 
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem("user", JSON.stringify(user));
       })
 
       .addCase(login.rejected, (state, action) => {
@@ -122,8 +140,8 @@ const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
 
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
       });
   },
 });

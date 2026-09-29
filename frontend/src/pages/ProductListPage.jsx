@@ -1,5 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+
+import CustomSelect from "../components/CustomSelect.jsx";
+import { useThemeLanguage } from "../context/useThemeLanguage.js";
+import { translations } from "../i18n/translations.js";
 
 import {
   getBrands,
@@ -7,10 +11,150 @@ import {
   getSizes,
 } from "../services/catalogService.js";
 
-import api from "../services/api.js";
+import { getPrimaryProductImage } from "../services/productImageService.js";
 import { getProducts } from "../services/productService.js";
 
+function LazyProductImage({ product, imageUrl, onLoaded, t }) {
+  const containerRef = useRef(null);
+  const requestedRef = useRef(false);
+
+  const supportsIntersectionObserver =
+    typeof window !== "undefined" && "IntersectionObserver" in window;
+
+  const [visible, setVisible] = useState(
+    Boolean(imageUrl) || !supportsIntersectionObserver,
+  );
+
+  const [loading, setLoading] = useState(false);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState("");
+  const [imageError, setImageError] = useState(false);
+
+  const displayImageUrl = imageUrl || resolvedImageUrl;
+
+  useEffect(() => {
+    if (imageUrl || !supportsIntersectionObserver) {
+      return;
+    }
+
+    const element = containerRef.current;
+
+    if (!element) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setVisible(true);
+        observer.disconnect();
+      },
+      {
+        rootMargin: "240px 0px",
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [imageUrl, supportsIntersectionObserver]);
+
+  useEffect(() => {
+    if (!visible || imageUrl || requestedRef.current) {
+      return;
+    }
+
+    requestedRef.current = true;
+
+    let active = true;
+
+    const loadImage = async () => {
+      try {
+        setLoading(true);
+        setImageError(false);
+
+        const image = await getPrimaryProductImage(product.id);
+
+        if (!active) {
+          return;
+        }
+
+        setResolvedImageUrl(image || "");
+        setLoading(false);
+
+        onLoaded?.(image || "");
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setResolvedImageUrl("");
+        setLoading(false);
+        setImageError(true);
+
+        onLoaded?.("");
+      }
+    };
+
+    void loadImage();
+
+    return () => {
+      active = false;
+    };
+  }, [visible, imageUrl, onLoaded, product.id]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex h-full w-full items-center justify-center overflow-hidden bg-neutral-100"
+    >
+      {loading && (
+        <div className="absolute inset-0 animate-pulse bg-neutral-100" />
+      )}
+
+      {displayImageUrl && !imageError ? (
+        <img
+          src={displayImageUrl}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            setImageError(true);
+          }}
+          className={`h-full w-full object-cover transition-all duration-500 ease-out ${
+            loading ? "scale-[1.02] opacity-0" : "scale-100 opacity-100"
+          }`}
+        />
+      ) : (
+        !loading && (
+          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_35%_30%,#ffffff,transparent_28%),linear-gradient(135deg,#f5f5f5,#e5e5e5)]">
+            <div className="px-5 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-neutral-400">
+                {t.products.sneakerPlaceholder}
+              </p>
+
+              <p className="mt-2 max-w-40 text-sm font-semibold text-neutral-500">
+                {product.name}
+              </p>
+            </div>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 function ProductListPage() {
+  const { language } = useThemeLanguage();
+  const t = translations[language];
+
   const [products, setProducts] = useState([]);
 
   const [brands, setBrands] = useState([]);
@@ -30,7 +174,6 @@ function ProductListPage() {
 
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(true);
-  const [imageLoading, setImageLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -57,7 +200,7 @@ function ProductListPage() {
       }
     };
 
-    loadFilterData();
+    void loadFilterData();
   }, []);
 
   useEffect(() => {
@@ -67,7 +210,6 @@ function ProductListPage() {
       try {
         setLoading(true);
         setError("");
-        setProductImages({});
 
         const data = await getProducts(filters);
 
@@ -78,63 +220,6 @@ function ProductListPage() {
         }
 
         setProducts(productList);
-
-        if (productList.length > 0) {
-          setImageLoading(true);
-
-          const imageResults = await Promise.all(
-            productList.map(async (product) => {
-              try {
-                const response = await api.get(
-                  `/products/${product.id}/images`,
-                );
-
-                const images = Array.isArray(response.data)
-                  ? response.data
-                  : response.data?.content || [];
-
-                const sortedImages = [...images].sort((a, b) => {
-                  if (a.primary && !b.primary) {
-                    return -1;
-                  }
-
-                  if (!a.primary && b.primary) {
-                    return 1;
-                  }
-
-                  return (
-                    Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-                  );
-                });
-
-                return {
-                  productId: product.id,
-                  imageUrl: sortedImages[0]?.imageUrl || "",
-                };
-              } catch {
-                return {
-                  productId: product.id,
-                  imageUrl: "",
-                };
-              }
-            }),
-          );
-
-          if (!active) {
-            return;
-          }
-
-          const imageMap = {};
-
-          imageResults.forEach((item) => {
-            imageMap[item.productId] = item.imageUrl;
-          });
-
-          setProductImages(imageMap);
-          setImageLoading(false);
-        } else {
-          setImageLoading(false);
-        }
       } catch (requestError) {
         if (!active) {
           return;
@@ -142,12 +227,11 @@ function ProductListPage() {
 
         setError(
           requestError.response?.data?.message ||
+            requestError.response?.data?.error ||
             "Không thể tải danh sách sản phẩm.",
         );
 
         setProducts([]);
-        setProductImages({});
-        setImageLoading(false);
       } finally {
         if (active) {
           setLoading(false);
@@ -155,7 +239,7 @@ function ProductListPage() {
       }
     };
 
-    loadProducts();
+    void loadProducts();
 
     return () => {
       active = false;
@@ -182,12 +266,31 @@ function ProductListPage() {
     });
   };
 
-  const formatPrice = (price) => {
-    return Number(price || 0).toLocaleString("vi-VN");
+  const handleBrandChange = (value) => {
+    setFilters((current) => ({
+      ...current,
+      brandId: value,
+    }));
   };
 
-  const getProductImage = (product) => {
-    return productImages[product.id] || "";
+  const handleCategoryChange = (value) => {
+    setFilters((current) => ({
+      ...current,
+      categoryId: value,
+    }));
+  };
+
+  const handleSizeChange = (value) => {
+    setFilters((current) => ({
+      ...current,
+      sizeId: value,
+    }));
+  };
+
+  const formatPrice = (price) => {
+    const locale = language === "en" ? "en-US" : "vi-VN";
+
+    return Number(price || 0).toLocaleString(locale);
   };
 
   const hasActiveFilters = Object.values(filters).some((value) => value !== "");
@@ -195,6 +298,39 @@ function ProductListPage() {
   const activeFilterCount = Object.values(filters).filter(
     (value) => value !== "",
   ).length;
+
+  const brandOptions = [
+    {
+      value: "",
+      label: language === "en" ? "All brands" : "Tất cả thương hiệu",
+    },
+    ...brands.map((brand) => ({
+      value: String(brand.id),
+      label: brand.name,
+    })),
+  ];
+
+  const categoryOptions = [
+    {
+      value: "",
+      label: language === "en" ? "All categories" : "Tất cả danh mục",
+    },
+    ...categories.map((category) => ({
+      value: String(category.id),
+      label: category.name,
+    })),
+  ];
+
+  const sizeOptions = [
+    {
+      value: "",
+      label: language === "en" ? "All sizes" : "Tất cả size",
+    },
+    ...sizes.map((size) => ({
+      value: String(size.id),
+      label: size.name,
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-[#f7f7f6]">
@@ -204,16 +340,15 @@ function ProductListPage() {
           <div className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
             <div className="max-w-3xl">
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
-                Collection
+                {t.products.eyebrow}
               </p>
 
               <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">
-                Sneaker Collection
+                {t.products.title}
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-500 sm:text-base">
-                Tìm kiếm và lọc sneaker theo thương hiệu, danh mục, size và mức
-                giá để tìm được lựa chọn phù hợp.
+                {t.products.description}
               </p>
             </div>
 
@@ -223,7 +358,7 @@ function ProductListPage() {
                   <span className="font-semibold text-neutral-950">
                     {products.length}
                   </span>{" "}
-                  sản phẩm
+                  {t.products.productCount}
                 </p>
               </div>
             )}
@@ -237,11 +372,11 @@ function ProductListPage() {
           <div className="flex flex-col gap-3 border-b border-neutral-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                Refine
+                {t.products.refine}
               </p>
 
               <h2 className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
-                Bộ lọc sản phẩm
+                {t.products.filterTitle}
               </h2>
             </div>
 
@@ -249,9 +384,9 @@ function ProductListPage() {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="self-start text-sm font-medium text-neutral-500 transition-colors duration-200 hover:text-neutral-950 sm:self-auto"
+                className="motion-soft self-start text-sm font-medium text-neutral-500 hover:text-neutral-950 sm:self-auto"
               >
-                Xóa tất cả
+                {t.products.clearAll}
               </button>
             )}
           </div>
@@ -263,7 +398,7 @@ function ProductListPage() {
                 htmlFor="keyword"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Tìm kiếm
+                {t.products.search}
               </label>
 
               <input
@@ -272,90 +407,58 @@ function ProductListPage() {
                 type="text"
                 value={filters.keyword}
                 onChange={handleFilterChange}
-                placeholder="Nhập tên sneaker..."
+                placeholder={t.products.searchPlaceholder}
                 className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 placeholder:text-neutral-400 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100"
               />
             </div>
 
             {/* Brand */}
             <div>
-              <label
-                htmlFor="brandId"
-                className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
-              >
-                Thương hiệu
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                {t.products.brand}
               </label>
 
-              <select
-                id="brandId"
-                name="brandId"
+              <CustomSelect
                 value={filters.brandId}
-                onChange={handleFilterChange}
+                onChange={handleBrandChange}
+                options={brandOptions}
+                placeholder={
+                  language === "en" ? "Select brand" : "Chọn thương hiệu"
+                }
                 disabled={filterLoading}
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">Tất cả thương hiệu</option>
-
-                {brands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Category */}
             <div>
-              <label
-                htmlFor="categoryId"
-                className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
-              >
-                Danh mục
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                {t.products.category}
               </label>
 
-              <select
-                id="categoryId"
-                name="categoryId"
+              <CustomSelect
                 value={filters.categoryId}
-                onChange={handleFilterChange}
+                onChange={handleCategoryChange}
+                options={categoryOptions}
+                placeholder={
+                  language === "en" ? "Select category" : "Chọn danh mục"
+                }
                 disabled={filterLoading}
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">Tất cả danh mục</option>
-
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Size */}
             <div>
-              <label
-                htmlFor="sizeId"
-                className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
-              >
-                Size
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                {t.products.size}
               </label>
 
-              <select
-                id="sizeId"
-                name="sizeId"
+              <CustomSelect
                 value={filters.sizeId}
-                onChange={handleFilterChange}
+                onChange={handleSizeChange}
+                options={sizeOptions}
+                placeholder={language === "en" ? "Select size" : "Chọn size"}
                 disabled={filterLoading}
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 text-sm text-neutral-950 transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">Tất cả size</option>
-
-                {sizes.map((size) => (
-                  <option key={size.id} value={size.id}>
-                    {size.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Min price */}
@@ -364,7 +467,7 @@ function ProductListPage() {
                 htmlFor="minPrice"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Giá từ
+                {t.products.minPrice}
               </label>
 
               <input
@@ -385,7 +488,7 @@ function ProductListPage() {
                 htmlFor="maxPrice"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500"
               >
-                Giá đến
+                {t.products.maxPrice}
               </label>
 
               <input
@@ -404,17 +507,17 @@ function ProductListPage() {
           <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-5">
             <p className="text-xs text-neutral-400">
               {activeFilterCount > 0
-                ? `${activeFilterCount} bộ lọc đang áp dụng`
-                : "Hiển thị toàn bộ sản phẩm"}
+                ? `${activeFilterCount} ${t.products.filtersApplied}`
+                : t.products.showAllProducts}
             </p>
 
             <button
               type="button"
               onClick={handleResetFilters}
               disabled={!hasActiveFilters}
-              className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
+              className="motion-soft rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Đặt lại
+              {t.products.reset}
             </button>
           </div>
         </div>
@@ -423,17 +526,13 @@ function ProductListPage() {
         <div className="mt-10 flex items-end justify-between border-b border-neutral-200 pb-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-neutral-400">
-              Available now
+              {t.products.availableNow}
             </p>
 
             <h2 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950">
-              Sản phẩm
+              {t.products.productTitle}
             </h2>
           </div>
-
-          {imageLoading && (
-            <p className="text-xs text-neutral-400">Đang tải hình ảnh...</p>
-          )}
         </div>
 
         {/* Loading */}
@@ -448,9 +547,13 @@ function ProductListPage() {
 
                 <div className="space-y-3 p-5">
                   <div className="h-3 w-20 animate-pulse rounded bg-neutral-100" />
+
                   <div className="h-5 w-4/5 animate-pulse rounded bg-neutral-100" />
+
                   <div className="h-3 w-24 animate-pulse rounded bg-neutral-100" />
+
                   <div className="h-5 w-28 animate-pulse rounded bg-neutral-100" />
+
                   <div className="h-11 w-full animate-pulse rounded-xl bg-neutral-100" />
                 </div>
               </div>
@@ -469,20 +572,20 @@ function ProductListPage() {
         {!loading && !error && products.length === 0 && (
           <div className="mt-6 rounded-[1.5rem] border border-neutral-200 bg-white px-6 py-20 text-center">
             <p className="text-lg font-semibold text-neutral-950">
-              Không tìm thấy sản phẩm.
+              {t.products.noProducts}
             </p>
 
             <p className="mt-2 text-sm text-neutral-500">
-              Hãy thử thay đổi từ khóa hoặc bộ lọc đang sử dụng.
+              {t.products.noProductsDescription}
             </p>
 
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="mt-6 rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-800"
+                className="motion-soft mt-6 rounded-xl bg-neutral-950 px-5 py-3 text-sm font-medium text-white hover:-translate-y-0.5 hover:bg-neutral-800"
               >
-                Xóa bộ lọc
+                {t.products.clearFilters}
               </button>
             )}
           </div>
@@ -491,86 +594,74 @@ function ProductListPage() {
         {/* Product grid */}
         {!loading && !error && products.length > 0 && (
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => {
-              const imageUrl = getProductImage(product);
-
-              return (
-                <article
-                  key={product.id}
-                  className="group overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-[0_18px_45px_rgba(0,0,0,0.08)]"
+            {products.map((product) => (
+              <article
+                key={product.id}
+                className="motion-soft group overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white hover:-translate-y-1 hover:border-neutral-300 hover:shadow-[0_18px_45px_rgba(0,0,0,0.08)]"
+              >
+                {/* Product image */}
+                <Link
+                  to={`/products/${product.id}`}
+                  className="motion-image relative block aspect-square overflow-hidden bg-neutral-100"
                 >
-                  {/* Product image */}
-                  <Link
-                    to={`/products/${product.id}`}
-                    className="motion-image relative block aspect-square overflow-hidden bg-neutral-100"
-                  >
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_35%_30%,#ffffff,transparent_28%),linear-gradient(135deg,#f5f5f5,#e5e5e5)]">
-                        <div className="text-center">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-neutral-400">
-                            Sneaker
-                          </p>
+                  <LazyProductImage
+                    product={product}
+                    imageUrl={productImages[product.id] || ""}
+                    onLoaded={(imageUrl) => {
+                      setProductImages((current) => ({
+                        ...current,
+                        [product.id]: imageUrl,
+                      }));
+                    }}
+                    t={t}
+                  />
 
-                          <p className="mt-2 max-w-32 text-sm font-semibold text-neutral-500">
-                            {product.name}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                  <div className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-700 backdrop-blur">
+                    {product.brandName || t.products.brandFallback}
+                  </div>
+                </Link>
 
-                    <div className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-700 backdrop-blur">
-                      {product.brandName || "Brand"}
-                    </div>
-                  </Link>
+                {/* Product info */}
+                <div className="p-5">
+                  <div className="min-h-[72px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
+                      {product.categoryName || t.products.categoryFallback}
+                    </p>
 
-                  {/* Product info */}
-                  <div className="p-5">
-                    <div className="min-h-[72px]">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
-                        {product.categoryName || "Category"}
+                    <h3 className="mt-2 line-clamp-2 text-[17px] font-semibold leading-6 tracking-[-0.015em] text-neutral-950">
+                      {product.name}
+                    </h3>
+                  </div>
+
+                  <div className="mt-5 flex items-end justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.13em] text-neutral-400">
+                        {t.products.priceFrom}
                       </p>
 
-                      <h3 className="mt-2 line-clamp-2 text-[17px] font-semibold leading-6 tracking-[-0.015em] text-neutral-950">
-                        {product.name}
-                      </h3>
+                      <p className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
+                        {formatPrice(product.basePrice)} ₫
+                      </p>
                     </div>
 
-                    <div className="mt-5 flex items-end justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.13em] text-neutral-400">
-                          Giá từ
-                        </p>
-
-                        <p className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
-                          {formatPrice(product.basePrice)} ₫
-                        </p>
-                      </div>
-
-                      <span className="text-xs text-neutral-400">
-                        #{product.id}
-                      </span>
-                    </div>
-
-                    <Link
-                      to={`/products/${product.id}`}
-                      className="group/button mt-5 flex items-center justify-between rounded-xl bg-neutral-950 px-4 py-3.5 text-sm font-medium text-white transition-all duration-300 hover:bg-neutral-800"
-                    >
-                      <span>Xem chi tiết</span>
-
-                      <span className="transition-transform duration-300 group-hover/button:translate-x-1">
-                        →
-                      </span>
-                    </Link>
+                    <span className="text-xs text-neutral-400">
+                      #{product.id}
+                    </span>
                   </div>
-                </article>
-              );
-            })}
+
+                  <Link
+                    to={`/products/${product.id}`}
+                    className="group/button mt-5 flex items-center justify-between rounded-xl bg-neutral-950 px-4 py-3.5 text-sm font-medium !text-white transition-all duration-300 hover:bg-neutral-800"
+                  >
+                    <span>{t.products.viewDetail}</span>
+
+                    <span className="transition-transform duration-300 group-hover/button:translate-x-1">
+                      →
+                    </span>
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>

@@ -5,10 +5,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { getProductImages } from "../services/productDetailService.js";
 import { fetchCart, resetCart } from "../store/cartSlice.js";
 import { checkout } from "../store/orderSlice.js";
+import { useThemeLanguage } from "../context/useThemeLanguage.js";
+import { translations } from "../i18n/translations.js";
 
 function CheckoutPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const { language } = useThemeLanguage();
+  const t = translations[language];
 
   const {
     cart,
@@ -122,7 +127,28 @@ function CheckoutPage() {
   }, [cart?.items]);
 
   const formatPrice = (price) => {
-    return Number(price || 0).toLocaleString("vi-VN");
+    return Number(price || 0).toLocaleString(
+      language === "en" ? "en-US" : "vi-VN",
+    );
+  };
+
+  const getOrderStatusLabel = (status) => {
+    if (!status) {
+      return "-";
+    }
+
+    const statusMap = {
+      PENDING: t.checkout.statusPending,
+      CONFIRMED: t.checkout.statusConfirmed,
+      PAID: t.checkout.statusPaid,
+      CANCELLED: t.checkout.statusCancelled,
+      COMPLETED: t.checkout.statusCompleted,
+      PROCESSING: t.checkout.statusProcessing,
+      SHIPPED: t.checkout.statusShipped,
+      DELIVERED: t.checkout.statusDelivered,
+    };
+
+    return statusMap[status] || status;
   };
 
   const handleCheckout = async () => {
@@ -153,7 +179,9 @@ function CheckoutPage() {
         <section className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 lg:px-8">
           <div className="mb-10">
             <div className="h-3 w-24 animate-pulse rounded bg-neutral-200" />
+
             <div className="mt-4 h-10 w-64 animate-pulse rounded bg-neutral-200" />
+
             <div className="mt-3 h-4 w-96 max-w-full animate-pulse rounded bg-neutral-200" />
           </div>
 
@@ -169,7 +197,9 @@ function CheckoutPage() {
 
                     <div className="flex-1 space-y-3">
                       <div className="h-5 w-3/5 animate-pulse rounded bg-neutral-100" />
+
                       <div className="h-4 w-40 animate-pulse rounded bg-neutral-100" />
+
                       <div className="h-4 w-28 animate-pulse rounded bg-neutral-100" />
                     </div>
                   </div>
@@ -192,15 +222,15 @@ function CheckoutPage() {
             <div className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
               <div className="border-b border-neutral-100 px-6 py-10 text-center sm:px-10 sm:py-14">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
-                  Order Confirmed
+                  {t.checkout.successEyebrow}
                 </p>
 
                 <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-4xl">
-                  Đặt hàng thành công
+                  {t.checkout.successTitle}
                 </h1>
 
                 <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-neutral-500 sm:text-base">
-                  Đơn hàng của bạn đã được tạo thành công và đang được xử lý.
+                  {t.checkout.successDescription}
                 </p>
               </div>
 
@@ -208,7 +238,7 @@ function CheckoutPage() {
                 <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-neutral-50">
                   <div className="flex items-center justify-between gap-4 px-5 py-4">
                     <span className="text-sm text-neutral-500">
-                      Mã đơn hàng
+                      {t.checkout.orderId}
                     </span>
 
                     <span className="text-sm font-semibold text-neutral-950">
@@ -217,15 +247,19 @@ function CheckoutPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-4 px-5 py-4">
-                    <span className="text-sm text-neutral-500">Trạng thái</span>
+                    <span className="text-sm text-neutral-500">
+                      {t.checkout.status}
+                    </span>
 
                     <span className="rounded-full bg-neutral-950 px-3 py-1.5 text-xs font-semibold text-white">
-                      {currentOrder.status}
+                      {getOrderStatusLabel(currentOrder.status)}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-4 px-5 py-4">
-                    <span className="text-sm text-neutral-500">Tổng tiền</span>
+                    <span className="text-sm text-neutral-500">
+                      {t.checkout.total}
+                    </span>
 
                     <span className="text-lg font-semibold text-neutral-950">
                       {formatPrice(currentOrder.totalAmount)} ₫
@@ -239,7 +273,7 @@ function CheckoutPage() {
                     onClick={handleContinueShopping}
                     className="rounded-xl bg-neutral-950 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800 active:translate-y-0"
                   >
-                    Tiếp tục mua sắm
+                    {t.checkout.continueShopping}
                   </button>
 
                   <button
@@ -247,7 +281,7 @@ function CheckoutPage() {
                     onClick={handleViewAccount}
                     className="rounded-xl border border-neutral-300 bg-white px-6 py-3.5 text-sm font-semibold text-neutral-900 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-50 active:translate-y-0"
                   >
-                    Xem tài khoản
+                    {t.checkout.viewAccount}
                   </button>
                 </div>
 
@@ -255,7 +289,7 @@ function CheckoutPage() {
                   to="/orders"
                   className="mt-5 block text-center text-sm font-medium text-neutral-500 transition-colors duration-200 hover:text-neutral-950"
                 >
-                  Xem lịch sử đơn hàng
+                  {t.checkout.viewOrderHistory}
                 </Link>
               </div>
             </div>
@@ -276,16 +310,15 @@ function CheckoutPage() {
           <div className="mx-auto max-w-2xl overflow-hidden rounded-[2rem] border border-neutral-200 bg-white shadow-[0_15px_45px_rgba(0,0,0,0.05)]">
             <div className="px-6 py-20 text-center sm:px-10 sm:py-24">
               <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-neutral-400">
-                Checkout
+                {t.checkout.eyebrow}
               </p>
 
               <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-neutral-950">
-                Không thể checkout
+                {t.checkout.emptyTitle}
               </h1>
 
               <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-neutral-500">
-                Giỏ hàng đang trống. Hãy thêm sản phẩm trước khi tiến hành đặt
-                hàng.
+                {t.checkout.emptyDescription}
               </p>
 
               <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
@@ -293,14 +326,14 @@ function CheckoutPage() {
                   to="/products"
                   className="rounded-xl bg-neutral-950 px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800"
                 >
-                  Xem sản phẩm
+                  {t.checkout.viewProducts}
                 </Link>
 
                 <Link
                   to="/cart"
                   className="rounded-xl border border-neutral-300 bg-white px-6 py-3.5 text-sm font-semibold text-neutral-900 transition-all duration-300 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-50"
                 >
-                  Quay lại giỏ hàng
+                  {t.checkout.backToCart}
                 </Link>
               </div>
             </div>
@@ -316,17 +349,17 @@ function CheckoutPage() {
         {/* Heading */}
         <div className="mb-10 border-b border-neutral-200 pb-8">
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-neutral-400">
-            Checkout
+            {t.checkout.eyebrow}
           </p>
 
           <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <h1 className="text-4xl font-semibold tracking-[-0.04em] text-neutral-950 sm:text-5xl">
-                Xác nhận đơn hàng
+                {t.checkout.title}
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-500 sm:text-base">
-                Kiểm tra lại sản phẩm và tổng tiền trước khi hoàn tất đơn hàng.
+                {t.checkout.description}
               </p>
             </div>
 
@@ -334,7 +367,7 @@ function CheckoutPage() {
               to="/cart"
               className="self-start text-sm font-medium text-neutral-500 transition-colors duration-200 hover:text-neutral-950 sm:self-auto"
             >
-              ← Quay lại giỏ hàng
+              ← {t.checkout.backToCart}
             </Link>
           </div>
         </div>
@@ -345,16 +378,18 @@ function CheckoutPage() {
             <div className="mb-4 flex items-end justify-between">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                  Order items
+                  {t.checkout.orderItemsEyebrow}
                 </p>
 
                 <h2 className="mt-1 text-lg font-semibold text-neutral-950">
-                  Sản phẩm của bạn
+                  {t.checkout.orderItemsTitle}
                 </h2>
               </div>
 
               {imageLoading && (
-                <p className="text-xs text-neutral-400">Đang tải hình ảnh...</p>
+                <p className="text-xs text-neutral-400">
+                  {t.checkout.loadingImages}
+                </p>
               )}
             </div>
 
@@ -388,7 +423,7 @@ function CheckoutPage() {
                     {/* Details */}
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-400">
-                        Product
+                        {t.checkout.product}
                       </p>
 
                       <Link
@@ -400,7 +435,7 @@ function CheckoutPage() {
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
-                          Size {item.sizeName}
+                          {t.checkout.size} {item.sizeName}
                         </span>
 
                         <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
@@ -408,7 +443,7 @@ function CheckoutPage() {
                         </span>
 
                         <span className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600">
-                          SL: {item.quantity}
+                          {t.checkout.quantity}: {item.quantity}
                         </span>
                       </div>
                     </div>
@@ -416,7 +451,7 @@ function CheckoutPage() {
                     {/* Price */}
                     <div className="shrink-0 sm:min-w-32 sm:text-right">
                       <p className="text-xs text-neutral-400">
-                        {formatPrice(item.unitPrice)} ₫ / sản phẩm
+                        {formatPrice(item.unitPrice)} ₫ / {t.checkout.item}
                       </p>
 
                       <p className="mt-1 text-lg font-semibold tracking-tight text-neutral-950">
@@ -434,18 +469,20 @@ function CheckoutPage() {
             <div className="overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-[0_15px_45px_rgba(0,0,0,0.05)]">
               <div className="border-b border-neutral-100 px-6 py-5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-400">
-                  Order summary
+                  {t.checkout.summaryEyebrow}
                 </p>
 
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950">
-                  Tóm tắt đơn hàng
+                  {t.checkout.summaryTitle}
                 </h2>
               </div>
 
               <div className="px-6 py-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-500">Số lượng sản phẩm</span>
+                    <span className="text-neutral-500">
+                      {t.checkout.totalProducts}
+                    </span>
 
                     <span className="font-medium text-neutral-900">
                       {totalItems}
@@ -453,7 +490,9 @@ function CheckoutPage() {
                   </div>
 
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-500">Sản phẩm trong giỏ</span>
+                    <span className="text-neutral-500">
+                      {t.checkout.cartProducts}
+                    </span>
 
                     <span className="font-medium text-neutral-900">
                       {items.length}
@@ -466,7 +505,7 @@ function CheckoutPage() {
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.14em] text-neutral-400">
-                      Tổng thanh toán
+                      {t.checkout.paymentTotal}
                     </p>
 
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
@@ -490,7 +529,9 @@ function CheckoutPage() {
                   className="group mt-7 flex w-full items-center justify-between rounded-xl bg-neutral-950 px-5 py-4 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span>
-                    {actionLoading ? "Đang tạo đơn hàng..." : "Đặt hàng"}
+                    {actionLoading
+                      ? t.checkout.creatingOrder
+                      : t.checkout.placeOrder}
                   </span>
 
                   {!actionLoading && (
@@ -504,16 +545,14 @@ function CheckoutPage() {
                   to="/cart"
                   className="mt-4 block text-center text-sm font-medium text-neutral-500 transition-colors duration-200 hover:text-neutral-950"
                 >
-                  Chỉnh sửa giỏ hàng
+                  {t.checkout.editCart}
                 </Link>
               </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-neutral-200 bg-white px-5 py-4">
               <p className="text-xs leading-5 text-neutral-500">
-                Khi nhấn{" "}
-                <span className="font-semibold text-neutral-700">Đặt hàng</span>
-                , hệ thống sẽ tạo đơn hàng và cập nhật lại giỏ hàng của bạn.
+                {t.checkout.bottomNote}
               </p>
             </div>
           </aside>
