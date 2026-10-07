@@ -1,24 +1,60 @@
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+.env.local
+.env.*.local
+*.env
+
+# ========================
+# Backend (Spring Boot)
+# ========================
+backend/target/
+backend/.idea/
+backend/*.iml
+backend/.vscode/
+backend/*.class
+backend/*.jar
+backend/*.war
+backend/hs_err_pid*
+backend/.settings/
+backend/.project
+backend/.classpath
+
+# Local Spring configuration containing secrets
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-prod.properties
+
+# ========================
+# Frontend (React + Vite)
+# ========================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+frontend/.vscode/*
+frontend/!.vscode/extensions.json
+frontend/.idea/
+frontend/.DS_Store
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
+
+# ========================
 # Logs
-logs
+# ========================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?

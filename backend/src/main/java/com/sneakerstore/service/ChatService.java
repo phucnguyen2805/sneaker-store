@@ -227,6 +227,23 @@ public class ChatService {
         return toConversationResponse(saved);
     }
 
+        /**
+     * User xóa conversation của chính mình (SHOP hoặc AI).
+     * Xóa toàn bộ message trước, rồi xóa conversation.
+     */
+    @Transactional
+    public void deleteMyConversation(Long conversationId) {
+        User currentUser = getCurrentUser();
+
+        ChatConversation conversation = getOwnedConversation(
+                conversationId,
+                currentUser.getId()
+        );
+
+        chatMessageRepository.deleteByConversationId(conversation.getId());
+        chatConversationRepository.delete(conversation);
+    }
+
     /**
      * Lấy User hiện tại từ Spring Security.
      *

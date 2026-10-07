@@ -18,14 +18,26 @@ public class Brand {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /*
+    /**
      * Tên thương hiệu phải là duy nhất.
      * Ví dụ: Nike, Adidas, Puma...
      */
     @Column(nullable = false, length = 100)
     private String name;
 
+    /**
+     * URL logo brand trên Cloudinary.
+     * Có thể null nếu chưa upload.
+     */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     public Brand(String name) {
         this.name = name;
+    }
+
+    public Brand(String name, String imageUrl) {
+        this.name = name;
+        this.imageUrl = imageUrl;
     }
 }

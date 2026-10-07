@@ -15,6 +15,8 @@ export const translations = {
       login: "Đăng nhập",
       logout: "Đăng xuất",
       greeting: "Xin chào",
+      adminBrands: "Thương hiệu",
+      adminCategories: "Danh mục",
     },
 
     language: {
@@ -796,6 +798,8 @@ export const translations = {
       login: "Login",
       logout: "Logout",
       greeting: "Hello",
+      adminBrands: "Brands",
+      adminCategories: "Categories",
     },
 
     language: {

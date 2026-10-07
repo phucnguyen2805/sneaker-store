@@ -1,0 +1,34 @@
+databaseChangeLog:
+  # =========================================================
+  # BRANDS — thêm cột logo (Cloudinary URL)
+  # =========================================================
+  - changeSet:
+      id: 008-add-brands-image-url
+      author: sneakerstore
+      changes:
+        - addColumn:
+            tableName: brands
+            columns:
+              - column:
+                  name: image_url
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: true
+                  remarks: "URL logo brand trên Cloudinary"
+
+  # =========================================================
+  # CATEGORIES — thêm cột icon/ảnh đại diện
+  # =========================================================
+  - changeSet:
+      id: 008-add-categories-image-url
+      author: sneakerstore
+      changes:
+        - addColumn:
+            tableName: categories
+            columns:
+              - column:
+                  name: image_url
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: true
+                  remarks: "URL ảnh đại diện category trên Cloudinary"

@@ -1,35 +1,32 @@
 package com.sneakerstore.controller;
 
-import java.util.List;
-
+import com.sneakerstore.dto.CategoryResponse;
+import com.sneakerstore.service.CategoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sneakerstore.entity.Category;
-import com.sneakerstore.repository.CategoryRepository;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
 
-    private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
 
-    public CategoryController(CategoryRepository categoryRepository) {
-        this.categoryRepository = categoryRepository;
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
     }
 
-    /*
-     * API public để Frontend lấy danh sách danh mục.
-     *
-     * GET /api/categories
-     *
-     * Khách chưa đăng nhập vẫn cần dữ liệu Category
-     * để thực hiện bộ lọc sản phẩm trên Storefront.
-     */
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryRepository.findAll());
+    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
+        return ResponseEntity.ok(categoryService.getAllCategories());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 }

@@ -104,4 +104,17 @@ public class AdminChatController {
                 )
         );
     }
+
+        /**
+     * Admin xóa conversation SHOP.
+     * DELETE /api/admin/chat/conversations/{conversationId}
+     */
+    @DeleteMapping("/conversations/{conversationId}")
+    public ResponseEntity<Void> deleteConversation(
+            @PathVariable Long conversationId) {
+
+        adminChatService.deleteConversation(conversationId);
+
+        return ResponseEntity.noContent().build();
+    }
 }

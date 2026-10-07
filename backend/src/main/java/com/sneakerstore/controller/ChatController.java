@@ -116,4 +116,17 @@ public class ChatController {
                 chatService.closeConversation(conversationId)
         );
     }
+
+        /**
+     * User xóa conversation (SHOP hoặc AI) của chính mình.
+     * DELETE /api/chat/conversations/{conversationId}
+     */
+    @DeleteMapping("/conversations/{conversationId}")
+    public ResponseEntity<Void> deleteConversation(
+            @PathVariable Long conversationId) {
+
+        chatService.deleteMyConversation(conversationId);
+
+        return ResponseEntity.noContent().build();
+    }
 }

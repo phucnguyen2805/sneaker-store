@@ -40,3 +40,7 @@ export const reopenAdminChatConversation = async (conversationId) => {
 
   return response.data;
 };
+
+export const deleteAdminChatConversation = async (conversationId) => {
+  await api.delete(`/admin/chat/conversations/${conversationId}`);
+};

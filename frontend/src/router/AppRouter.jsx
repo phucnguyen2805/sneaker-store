@@ -19,6 +19,8 @@ import ProductDetailPage from "../pages/ProductDetailPage.jsx";
 import ProductListPage from "../pages/ProductListPage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import RegisterPage from "../pages/RegisterPage.jsx";
+import AdminBrandPage from "../pages/AdminBrandPage.jsx";
+import AdminCategoryPage from "../pages/AdminCategoryPage.jsx";
 
 import MainLayout from "../layouts/MainLayout.jsx";
 
@@ -71,6 +73,10 @@ function AppRouter() {
             <Route path="/admin/orders" element={<AdminOrderPage />} />
 
             <Route path="/admin/users" element={<AdminUserPage />} />
+
+            <Route path="/admin/brands" element={<AdminBrandPage />} />
+
+            <Route path="/admin/categories" element={<AdminCategoryPage />} />
           </Route>
         </Route>
       </Routes>

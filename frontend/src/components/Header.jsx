@@ -375,6 +375,34 @@ function Header() {
                         </NavLink>
 
                         <NavLink
+                          to="/admin/brands"
+                          onClick={() => setAdminMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `block rounded-xl px-4 py-3 text-sm transition-colors duration-200 ${
+                              isActive
+                                ? "!bg-neutral-950 !text-white"
+                                : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
+                            }`
+                          }
+                        >
+                          {t.nav.adminBrands || "Brands"}
+                        </NavLink>
+
+                        <NavLink
+                          to="/admin/categories"
+                          onClick={() => setAdminMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `block rounded-xl px-4 py-3 text-sm transition-colors duration-200 ${
+                              isActive
+                                ? "!bg-neutral-950 !text-white"
+                                : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
+                            }`
+                          }
+                        >
+                          {t.nav.adminCategories || "Categories"}
+                        </NavLink>
+
+                        <NavLink
                           to="/admin/orders"
                           onClick={() => setAdminMenuOpen(false)}
                           className={({ isActive }) =>

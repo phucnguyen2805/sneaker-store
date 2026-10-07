@@ -7,6 +7,7 @@ import { useThemeLanguage } from "../context/useThemeLanguage.js";
 
 import {
   createChatConversation,
+  deleteChatConversation,
   getChatMessages,
   getMyChatConversations,
   sendAiChatMessage,
@@ -28,7 +29,38 @@ function ChatWidget() {
   const navigate = useNavigate();
   const { language } = useThemeLanguage();
 
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+
+  const isAdmin = (() => {
+    if (!user) {
+      return false;
+    }
+
+    const role = String(user.role || user.roleName || "").toUpperCase();
+    if (role === "ADMIN" || role === "ROLE_ADMIN") {
+      return true;
+    }
+
+    const roles = user.roles || user.authorities || [];
+    if (Array.isArray(roles)) {
+      return roles.some((item) => {
+        const value =
+          typeof item === "string"
+            ? item
+            : item?.authority || item?.role || item?.name || "";
+        const normalized = String(value).toUpperCase();
+        return (
+          normalized === "ADMIN" ||
+          normalized === "ROLE_ADMIN" ||
+          normalized.endsWith("_ADMIN")
+        );
+      });
+    }
+
+    return false;
+  })();
+
+  // Admin dùng trang Admin Chat — không hiện widget storefront
 
   const [open, setOpen] = useState(false);
   const [activeType, setActiveType] = useState(CHAT_TYPES.SHOP);
@@ -49,6 +81,8 @@ function ChatWidget() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const incomingStateRef = useRef(new Map());
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const text = {
     vi: {
@@ -74,6 +108,13 @@ function ChatWidget() {
       aiThinking: "AI đang trả lời...",
       today: "Hôm nay",
       justNow: "Vừa xong",
+      deleteChat: "Xóa hội thoại",
+      deleteModalTitle: "Xóa hội thoại?",
+      deleteModalBody:
+        "Toàn bộ tin nhắn hội thoại này sẽ bị xóa vĩnh viễn. Không hoàn tác được.",
+      deleteConfirm: "Xóa hội thoại",
+      deleteCancel: "Hủy",
+      deleteError: "Không thể xóa hội thoại.",
     },
     en: {
       button: "Chat",
@@ -98,6 +139,13 @@ function ChatWidget() {
       aiThinking: "AI is thinking...",
       today: "Today",
       justNow: "Just now",
+      deleteChat: "Delete chat",
+      deleteModalTitle: "Delete conversation?",
+      deleteModalBody:
+        "All messages in this conversation will be permanently deleted. This cannot be undone.",
+      deleteConfirm: "Delete conversation",
+      deleteCancel: "Cancel",
+      deleteError: "Unable to delete the conversation.",
     },
   };
 
@@ -504,6 +552,58 @@ function ChatWidget() {
     }
   };
 
+  const openDeleteModal = () => {
+    if (!activeConversation?.id || sending || deleting) {
+      return;
+    }
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) {
+      return;
+    }
+    setDeleteModalOpen(false);
+  };
+
+  const handleDeleteConversation = async () => {
+    const conversation = activeConversation;
+
+    if (!conversation?.id || deleting) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+
+      await deleteChatConversation(conversation.id);
+
+      setConversations((current) =>
+        current.filter((item) => item.id !== conversation.id),
+      );
+      setActiveConversation(null);
+      setMessages([]);
+      setDeleteModalOpen(false);
+
+      // Tạo lại conversation trống cùng type
+      const created = await ensureConversation(activeType, []);
+      if (created?.id) {
+        setActiveConversation(created);
+        setMessages([]);
+      }
+    } catch (requestError) {
+      console.error("Không thể xóa conversation:", requestError);
+      setError(
+        requestError?.response?.data?.message ||
+          requestError?.response?.data?.error ||
+          t.deleteError,
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   useEffect(() => {
     const handleOpenProductChat = (event) => {
       const productId = Number(event.detail?.productId);
@@ -722,6 +822,10 @@ function ChatWidget() {
     }
   }, []);
 
+  if (isAdmin) {
+    return null;
+  }
+
   return (
     <>
       {!open && (
@@ -825,6 +929,16 @@ function ChatWidget() {
                   ? t.shopDescription
                   : t.aiDescription}
               </p>
+
+              {isAuthenticated && activeConversation?.id && (
+                <button
+                  type="button"
+                  onClick={openDeleteModal}
+                  className="mt-3 text-xs font-medium text-red-600 transition-colors hover:text-red-700"
+                >
+                  {t.deleteChat}
+                </button>
+              )}
             </div>
 
             {!isAuthenticated ? (
@@ -1010,6 +1124,46 @@ function ChatWidget() {
             )}
           </section>
         </>
+      )}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-neutral-950/40 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={closeDeleteModal}
+            className="absolute inset-0 cursor-default"
+          />
+
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_24px_80px_rgba(0,0,0,0.2)]">
+            <h3 className="text-base font-semibold text-neutral-950">
+              {t.deleteModalTitle}
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-neutral-500">
+              {t.deleteModalBody}
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-neutral-950 disabled:opacity-40"
+              >
+                {t.deleteCancel}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleDeleteConversation()}
+                disabled={deleting}
+                className="rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-40"
+              >
+                {deleting ? t.sending : t.deleteConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

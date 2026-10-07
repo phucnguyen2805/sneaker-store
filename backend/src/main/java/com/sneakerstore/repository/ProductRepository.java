@@ -37,4 +37,8 @@ public interface ProductRepository
         WHERE p.id IN :ids
         """)
     List<Product> findByIdInWithBrandAndCategory(@Param("ids") Collection<Long> ids);
+
+    long countByBrandId(Long brandId);
+
+    long countByCategoryId(Long categoryId);
 }

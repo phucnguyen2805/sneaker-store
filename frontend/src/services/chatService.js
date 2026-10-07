@@ -66,3 +66,7 @@ export const sendAiChatMessage = async (conversationId, message) => {
 
   return response.data;
 };
+
+export const deleteChatConversation = async (conversationId) => {
+  await api.delete(`/chat/conversations/${conversationId}`);
+};

@@ -9,9 +9,13 @@ import {
   getAdminChatMessages,
   reopenAdminChatConversation,
   sendAdminChatMessage,
+  deleteAdminChatConversation,
 } from "../services/adminChatService.js";
 import { getProducts } from "../services/productService.js";
-import { buildProductChatMessage, parseProductChatMessage } from "../utils/chatProductUtils.js";
+import {
+  buildProductChatMessage,
+  parseProductChatMessage,
+} from "../utils/chatProductUtils.js";
 
 function AdminChatPage() {
   const { language } = useThemeLanguage();
@@ -49,6 +53,13 @@ function AdminChatPage() {
       noProducts: "Không tìm thấy sản phẩm.",
       loadingProducts: "Đang tải sản phẩm...",
       productSentNote: "Mời bạn xem sản phẩm này.",
+      deleteChat: "Xóa",
+      deleteModalTitle: "Xóa hội thoại?",
+      deleteModalBody:
+        "Toàn bộ tin nhắn trong hội thoại này sẽ bị xóa vĩnh viễn. Không hoàn tác được.",
+      deleteConfirm: "Xóa hội thoại",
+      deleteCancel: "Hủy",
+      deleteError: "Không thể xóa hội thoại.",
     },
 
     en: {
@@ -84,6 +95,13 @@ function AdminChatPage() {
       noProducts: "No products found.",
       loadingProducts: "Loading products...",
       productSentNote: "Here is a product for you to check.",
+      deleteChat: "Delete",
+      deleteModalTitle: "Delete conversation?",
+      deleteModalBody:
+        "All messages in this conversation will be permanently deleted. This cannot be undone.",
+      deleteConfirm: "Delete conversation",
+      deleteCancel: "Cancel",
+      deleteError: "Unable to delete the conversation.",
     },
   };
 
@@ -109,7 +127,11 @@ function AdminChatPage() {
   const [products, setProducts] = useState([]);
 
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const selectedConversation = useMemo(() => {
     return (
@@ -165,8 +187,7 @@ function AdminChatPage() {
   const totalUnread = useMemo(
     () =>
       conversations.reduce(
-        (total, conversation) =>
-          total + Number(conversation.unreadCount || 0),
+        (total, conversation) => total + Number(conversation.unreadCount || 0),
         0,
       ),
     [conversations],
@@ -266,6 +287,60 @@ function AdminChatPage() {
     [t.loadError],
   );
 
+  const openDeleteModal = () => {
+    if (!selectedConversationId) {
+      return;
+    }
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) {
+      return;
+    }
+    setDeleteModalOpen(false);
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+
+      await deleteAdminChatConversation(selectedConversationId);
+
+      setConversations((current) =>
+        current.filter((item) => item.id !== selectedConversationId),
+      );
+      setSelectedConversationId(null);
+      setMessages([]);
+      setMobileShowChat(false);
+      setDeleteModalOpen(false);
+    } catch (requestError) {
+      console.error("Không thể xóa conversation:", requestError);
+      setError(
+        requestError?.response?.data?.message ||
+          requestError?.response?.data?.error ||
+          t.deleteError,
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const scrollMessagesToBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    // Chỉ đổi scrollTop của khung chat — không đụng window/page
+    container.scrollTop = container.scrollHeight;
+  }, []);
+
   /*
    * Initial loading.
    *
@@ -336,9 +411,6 @@ function AdminChatPage() {
     };
   }, []);
 
-  /*
-   * Refresh messages conversation đang mở mỗi 5 giây.
-   */
   useEffect(() => {
     if (!selectedConversationId) {
       return;
@@ -347,9 +419,12 @@ function AdminChatPage() {
     const conversationId = selectedConversationId;
 
     const intervalId = window.setInterval(async () => {
+      if (sending) {
+        return;
+      }
+
       try {
         const data = await getAdminChatMessages(conversationId);
-
         setMessages(data);
       } catch (requestError) {
         console.error("Không thể refresh messages:", requestError);
@@ -359,21 +434,18 @@ function AdminChatPage() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [selectedConversationId]);
+  }, [selectedConversationId, sending]);
 
-  /*
-   * Scroll xuống message mới nhất.
-   *
-   * requestAnimationFrame giúp thao tác DOM
-   * sau khi React render messages mới.
-   */
+  // Chỉ scroll khi chọn / đổi conversation — không scroll mỗi lần poll
   useEffect(() => {
+    if (!selectedConversationId) {
+      return;
+    }
+
     requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: "smooth",
-      });
+      scrollMessagesToBottom();
     });
-  }, [messages]);
+  }, [selectedConversationId, scrollMessagesToBottom]);
 
   const handleSelectConversation = async (conversationId) => {
     setSelectedConversationId(conversationId);
@@ -393,8 +465,7 @@ function AdminChatPage() {
       );
 
       const totalUnread = next.reduce(
-        (total, conversation) =>
-          total + Number(conversation.unreadCount || 0),
+        (total, conversation) => total + Number(conversation.unreadCount || 0),
         0,
       );
 
@@ -424,7 +495,10 @@ function AdminChatPage() {
 
       setProducts(productList);
     } catch (requestError) {
-      console.error("Không thể tải danh sách sản phẩm để gửi chat:", requestError);
+      console.error(
+        "Không thể tải danh sách sản phẩm để gửi chat:",
+        requestError,
+      );
       setError(
         requestError?.response?.data?.message ||
           requestError?.response?.data?.error ||
@@ -448,10 +522,7 @@ function AdminChatPage() {
       setSending(true);
       setError("");
 
-      const content = buildProductChatMessage(
-        product.id,
-        t.productSentNote,
-      );
+      const content = buildProductChatMessage(product.id, t.productSentNote);
 
       const savedMessage = await sendAdminChatMessage(
         selectedConversationId,
@@ -459,6 +530,10 @@ function AdminChatPage() {
       );
 
       setMessages((current) => [...current, savedMessage]);
+
+      requestAnimationFrame(() => {
+        scrollMessagesToBottom();
+      });
 
       setConversations((current) =>
         current.map((conversation) =>
@@ -512,6 +587,10 @@ function AdminChatPage() {
       );
 
       setMessages((current) => [...current, savedMessage]);
+
+      requestAnimationFrame(() => {
+        scrollMessagesToBottom();
+      });
 
       setMessageInput("");
 
@@ -847,6 +926,14 @@ function AdminChatPage() {
                         : t.closed}
                     </span>
 
+                    <button
+                      type="button"
+                      onClick={openDeleteModal}
+                      className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition-all duration-200 hover:border-red-600 hover:bg-red-50"
+                    >
+                      {t.deleteChat}
+                    </button>
+
                     {selectedConversation.status === "OPEN" ? (
                       <button
                         type="button"
@@ -868,7 +955,10 @@ function AdminChatPage() {
                 </header>
 
                 {/* Messages */}
-                <div className="min-h-0 flex-1 overflow-y-auto bg-[#fafaf9] px-4 py-5 sm:px-6">
+                <div
+                  ref={messagesContainerRef}
+                  className="min-h-0 flex-1 overflow-y-auto bg-[#fafaf9] px-4 py-5 sm:px-6"
+                >
                   {messagesLoading ? (
                     <div className="flex h-full items-center justify-center">
                       <p className="text-xs text-neutral-400">
@@ -1054,7 +1144,9 @@ function AdminChatPage() {
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {productPickerLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <p className="text-sm text-neutral-400">{t.loadingProducts}</p>
+                  <p className="text-sm text-neutral-400">
+                    {t.loadingProducts}
+                  </p>
                 </div>
               ) : filteredProducts.length === 0 ? (
                 <div className="flex items-center justify-center py-16 text-center">
@@ -1085,7 +1177,10 @@ function AdminChatPage() {
                           </p>
 
                           <p className="mt-3 text-sm font-semibold text-neutral-950">
-                            {Number(product.basePrice || 0).toLocaleString("vi-VN")} ₫
+                            {Number(product.basePrice || 0).toLocaleString(
+                              "vi-VN",
+                            )}{" "}
+                            ₫
                           </p>
                         </div>
 
@@ -1097,6 +1192,47 @@ function AdminChatPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-neutral-950/30 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={closeDeleteModal}
+            className="absolute inset-0 cursor-default"
+          />
+
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+            <h3 className="text-lg font-semibold tracking-tight text-neutral-950">
+              {t.deleteModalTitle}
+            </h3>
+
+            <p className="mt-3 text-sm leading-6 text-neutral-500">
+              {t.deleteModalBody}
+            </p>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 transition-all duration-200 hover:border-neutral-950 hover:text-neutral-950 disabled:opacity-40"
+              >
+                {t.deleteCancel}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleDeleteConversation()}
+                disabled={deleting}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-40"
+              >
+                {deleting ? t.sending : t.deleteConfirm}
+              </button>
             </div>
           </div>
         </div>

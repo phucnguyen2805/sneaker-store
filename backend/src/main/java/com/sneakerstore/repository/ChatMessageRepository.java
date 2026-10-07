@@ -49,4 +49,6 @@ public interface ChatMessageRepository
     List<ChatMessage> findTop20ByConversationIdOrderByCreatedAtDesc(
             Long conversationId
     );
+
+    void deleteByConversationId(Long conversationId);
 }

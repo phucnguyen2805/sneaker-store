@@ -12,7 +12,7 @@ function MainLayout() {
     <div className="min-h-screen bg-neutral-100 text-neutral-950">
       <Header />
 
-      <main key={location.key} className="page-transition">
+      <main key={location.pathname} className="page-transition">
         <Outlet />
       </main>
 

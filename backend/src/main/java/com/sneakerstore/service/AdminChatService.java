@@ -365,4 +365,27 @@ public class AdminChatService {
                 message.getCreatedAt()
         );
     }
+
+        /**
+     * Admin xóa conversation SHOP (và toàn bộ message).
+     */
+    @Transactional
+    public void deleteConversation(Long conversationId) {
+        ChatConversation conversation = chatConversationRepository
+                .findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy conversation"
+                ));
+
+        if (conversation.getType() != ChatConversationType.SHOP) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Admin chỉ xóa được conversation loại SHOP"
+            );
+        }
+
+        chatMessageRepository.deleteByConversationId(conversation.getId());
+        chatConversationRepository.delete(conversation);
+    }
 }
