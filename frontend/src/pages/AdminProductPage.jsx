@@ -580,22 +580,30 @@ function AdminProductPage() {
   const brandOptions = [
     {
       value: "",
-      label: t.adminProducts.form.selectBrand,
+      label:
+        t.adminProducts.form.selectBrand ||
+        (language === "en" ? "Select brand" : "Chọn thương hiệu"),
+      imageUrl: null,
     },
     ...brands.map((brand) => ({
       value: String(brand.id),
       label: brand.name,
+      imageUrl: brand.imageUrl || null,
     })),
   ];
 
   const categoryOptions = [
     {
       value: "",
-      label: t.adminProducts.form.selectCategory,
+      label:
+        t.adminProducts.form.selectCategory ||
+        (language === "en" ? "Select category" : "Chọn danh mục"),
+      imageUrl: null,
     },
     ...categories.map((category) => ({
       value: String(category.id),
       label: category.name,
+      imageUrl: category.imageUrl || null,
     })),
   ];
 

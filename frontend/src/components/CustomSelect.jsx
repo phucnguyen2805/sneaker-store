@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+/**
+ * options: [{ value, label, imageUrl? }]
+ * imageUrl (optional): logo hiện bên trái label
+ */
 function CustomSelect({
   value,
   onChange,
@@ -8,6 +12,7 @@ function CustomSelect({
   placeholder = "Select...",
   disabled = false,
   className = "",
+  showImage = true,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -173,13 +178,16 @@ function CustomSelect({
                 role="option"
                 aria-selected={active}
                 onClick={() => handleSelect(option)}
-                className={`flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150 ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-all duration-150 ${
                   active
                     ? "bg-neutral-950 text-white"
                     : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
                 }`}
               >
-                <span className="truncate">{option.label}</span>
+                {showImage && (
+                  <OptionThumb imageUrl={option.imageUrl} active={active} />
+                )}
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
               </button>
             );
           })
@@ -195,51 +203,81 @@ function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={toggleOpen}
-        className={`flex w-full items-center justify-between rounded-xl border bg-white px-4 py-3.5 text-left text-sm transition-all duration-200 ${
-          open
-            ? "border-neutral-950 bg-white ring-4 ring-neutral-100"
-            : "border-neutral-200 hover:border-neutral-300"
-        } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
         aria-haspopup="listbox"
         aria-expanded={open}
+        className={`flex w-full items-center gap-2.5 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-left text-sm text-neutral-950 outline-none transition-all duration-200 focus:border-neutral-950 focus:bg-white focus:ring-4 focus:ring-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 ${
+          open ? "border-neutral-950 bg-white ring-4 ring-neutral-100" : ""
+        }`}
       >
-        <span
-          className={
-            selectedOption
-              ? "truncate text-neutral-950"
-              : "truncate text-neutral-400"
-          }
-        >
-          {selectedOption?.label || placeholder}
-        </span>
+        {selectedOption ? (
+          <>
+            {showImage && <OptionThumb imageUrl={selectedOption.imageUrl} />}
+            <span className="min-w-0 flex-1 truncate">
+              {selectedOption.label}
+            </span>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-neutral-400">
+            {placeholder}
+          </span>
+        )}
 
-        <span
-          className={`ml-4 shrink-0 text-neutral-500 transition-transform duration-200 ${
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
+          aria-hidden="true"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M4 6L8 10L12 6"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
 
-      {open &&
-        typeof document !== "undefined" &&
-        createPortal(menu, document.body)}
+      {open && createPortal(menu, document.body)}
     </div>
+  );
+}
+
+/**
+ * Thumbnail logo 24x24 — placeholder xám nếu không có ảnh
+ */
+function OptionThumb({ imageUrl, active = false }) {
+  if (!imageUrl) {
+    return (
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[9px] font-medium ${
+          active
+            ? "border-white/20 bg-white/10 text-white/50"
+            : "border-neutral-200 bg-neutral-100 text-neutral-300"
+        }`}
+        aria-hidden="true"
+      >
+        —
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-white ${
+        active ? "border-white/25" : "border-neutral-200"
+      }`}
+    >
+      <img
+        src={imageUrl}
+        alt=""
+        className="h-full w-full object-contain p-0.5"
+        loading="lazy"
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
+        }}
+      />
+    </span>
   );
 }
 

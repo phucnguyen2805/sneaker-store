@@ -303,10 +303,12 @@ function ProductListPage() {
     {
       value: "",
       label: language === "en" ? "All brands" : "Tất cả thương hiệu",
+      imageUrl: null,
     },
     ...brands.map((brand) => ({
       value: String(brand.id),
       label: brand.name,
+      imageUrl: brand.imageUrl || null,
     })),
   ];
 
@@ -314,10 +316,12 @@ function ProductListPage() {
     {
       value: "",
       label: language === "en" ? "All categories" : "Tất cả danh mục",
+      imageUrl: null,
     },
     ...categories.map((category) => ({
       value: String(category.id),
       label: category.name,
+      imageUrl: category.imageUrl || null,
     })),
   ];
 
@@ -458,6 +462,7 @@ function ProductListPage() {
                 options={sizeOptions}
                 placeholder={language === "en" ? "Select size" : "Chọn size"}
                 disabled={filterLoading}
+                showImage={false}
               />
             </div>
 
