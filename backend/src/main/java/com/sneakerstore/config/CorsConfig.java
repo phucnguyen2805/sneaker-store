@@ -18,7 +18,8 @@ public class CorsConfig {
         // Cho phép Frontend React chạy local bằng Vite.
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "http://127.0.0.1:5173"));
+                "http://127.0.0.1:5173",
+                "https://sneaker-store-oe50.onrender.com"));
 
         // Cho phép các HTTP method mà Frontend sẽ sử dụng.
         configuration.setAllowedMethods(List.of(
